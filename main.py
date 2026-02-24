@@ -1,7 +1,7 @@
 ﻿#!/usr/bin/env python3
 """
 RUT956 CONFIGURATOR v2.0
-Herramienta SSH para Teltonika RUT956 + AutodetecciÃ³n de dispositivos Ethernet
+Herramienta SSH para Teltonika RUT956 + Autodeteccion de dispositivos Ethernet
 """
 
 import FreeSimpleGUI as sg
@@ -96,8 +96,8 @@ def scan_network_thread(window) -> None:
     """
     Hilo de escaneo:
       - Obtiene dispositivos de la tabla ARP
-      - Hace ping a cada uno para verificar si estÃ¡ vivo
-      - EnvÃ­a eventos al window con write_event_value
+      - Hace ping a cada uno para verificar si esta vivo
+      - Envia eventos al window con write_event_value
     """
     devices = get_arp_devices()
     if not devices:
@@ -152,7 +152,7 @@ class RUT956ConfigGUI:
         # Barra de estado global (footer)
         self._status_msg   = 'Listo'
         self._status_color = DIM
-        # ComunicaciÃ³n thread-safe para el popup de configuraciÃ³n SIM
+        # Comunicacion thread-safe para el popup de configuracion SIM
 
     # â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -176,8 +176,8 @@ class RUT956ConfigGUI:
 
     def _log(self, msg: str, level: str = 'INFO') -> None:
         ts    = datetime.now().strftime('%H:%M:%S')
-        icons = {'INFO': 'â€º', 'OK': 'âœ“', 'ERROR': 'âœ—', 'WAIT': 'â€¦', 'CMD': '$'}
-        line  = f'[{ts}] {icons.get(level, "Â·")} {msg}'
+        icons = {'INFO': 'â€º', 'OK': 'âœ“', 'ERROR': 'âœ—', 'WAIT': '...', 'CMD': '$'}
+        line  = f'[{ts}] {icons.get(level, "·")} {msg}'
         self.log_lines.append(line)
         if len(self.log_lines) > 300:
             self.log_lines.pop(0)
@@ -186,7 +186,7 @@ class RUT956ConfigGUI:
 
     def connect(self, ip: str, user: str, password: str) -> bool:
         try:
-            self._log(f'Conectando a {ip}â€¦', 'WAIT')
+            self._log(f'Conectando a {ip}...', 'WAIT')
             self.ssh = paramiko.SSHClient()
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
             self.ssh.connect(ip, username=user, password=password, timeout=10)
@@ -197,7 +197,7 @@ class RUT956ConfigGUI:
             self.connected = True
             return True
         except Exception as e:
-            self._log(f'Error de conexiÃ³n: {e}', 'ERROR')
+            self._log(f'Error de conexion: {e}', 'ERROR')
             self.connected = False
             return False
 
@@ -222,20 +222,21 @@ class RUT956ConfigGUI:
         self.progress_text    = text
 
     def _set_status(self, msg: str, color: str = DIM) -> None:
-        """Actualiza la barra de estado inferior (footer). Visible en ambas pestaÃ±as."""
+        """Actualiza la barra de estado inferior (footer). Visible en ambas pestanas."""
         self._status_msg   = msg
         self._status_color = color
-        # Loguear tambiÃ©n para que quede en el historial del log
+        # Loguear tambien para que quede en el historial del log
         self._log(msg, 'INFO')
 
     # â”€â”€ Configuraciones de Router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-    # â”€â”€ Wizard SIM 4G (Dual SIM, checklist en vivo) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    # -- Wizard SIM 4G (Dual SIM, checklist en vivo) --------------------------
 
     def _sim_wizard(self) -> None:
         """
-        Wizard de configuraciÃ³n SIM 4G para RUT956 (Dual SIM).
-        Fase 1: formulario de parÃ¡metros para SIM1 y SIM2.
+        Wizard de configuracion SIM 4G para RUT956 (Dual SIM).
+        Fase 1: formulario de parametros para SIM1 y SIM2.
         Fase 2: ventana de progreso con checklist visual en tiempo real.
         Ambas SIMs se configuran en paralelo (threads coordinados).
         """
@@ -244,47 +245,91 @@ class RUT956ConfigGUI:
 
         if not self.connected:
             self._log('No conectado al router', 'ERROR')
-            self._set_status('SIM 4G â€” No hay conexiÃ³n SSH activa', RED)
+            self._set_status('SIM 4G - No hay conexion SSH activa', RED)
             return
 
-        # â”€â”€ Pasos del proceso (id, etiqueta) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # -- Pasos del proceso (id, etiqueta) ---------------------------------
         STEPS = [
-            ('diag',    'DiagnÃ³stico inicial modem/SIM'),
+            ('diag',    'Diagnostico inicial modem/SIM'),
             ('clean',   'Limpiar interfaces residuales'),
             ('uci',     'Configurar UCI  (proto=wwan)'),
             ('fw',      'Asociar a zona WAN firewall'),
             ('restart', 'Reiniciar servicio de red'),
             ('ifup',    'Levantar interfaz (ifup)'),
-            ('r1',      'Ronda 1 â€” esperando registro'),
-            ('r2',      'Ronda 2 â€” reintento modem'),
-            ('r3',      'Ronda 3 â€” verificando seÃ±al'),
-            ('r4',      'Ronda 4 â€” Ãºltimo intento'),
-            ('final',   'DiagnÃ³stico final'),
+            ('r1',      'Ronda 1 - esperando registro'),
+            ('r2',      'Ronda 2 - reintento modem'),
+            ('r3',      'Ronda 3 - verificando senal'),
+            ('r4',      'Ronda 4 - ultimo intento'),
+            ('final',   'Diagnostico final'),
         ]
         # Iconos y colores por estado
         ST = {
-            'pending': ('â—‹', DIM),
-            'run':     ('âŸ³', AMBER),
-            'ok':      ('âœ“', GREEN),
-            'warn':    ('âš ', '#e8a838'),
-            'err':     ('âœ—', RED),
-            'skip':    ('â€”', DIM),
+            'pending': ('o', DIM),
+            'run':     ('\u27f3', AMBER),
+            'ok':      ('\u2713', GREEN),
+            'warn':    ('\u26a0', '#e8a838'),
+            'err':     ('\u2717', RED),
+            'skip':    ('-', DIM),
         }
+        # Secuencia de animacion para pasos activos
+        SPIN = ['\u27f3', '\u21bb', '\u27f2', '\u21ba']
 
-        # â”€â”€ Fase 1: Formulario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        def _sig_bar(rssi_str: str) -> str:
+            """Convierte RSSI en barra visual: UUUUU-- -73 dBm (Buena)."""
+            try:
+                val = int(rssi_str.strip().replace('RSSI:', '').strip())
+                if val >= -65:
+                    bars, qual = 6, 'Excelente'
+                elif val >= -75:
+                    bars, qual = 5, 'Muy buena'
+                elif val >= -85:
+                    bars, qual = 4, 'Buena'
+                elif val >= -95:
+                    bars, qual = 2, 'Regular'
+                else:
+                    bars, qual = 1, 'Debil'
+                bar = '\u2593' * bars + '\u2591' * (6 - bars)
+                return f'{bar}  {val} dBm  ({qual})'
+            except Exception:
+                return rssi_str or 'N/A'
+
+        def _get_ip(slot: str) -> str:
+            """Obtiene IP del slot - intenta ip addr y luego ifconfig como fallback."""
+            # Metodo 1: ip addr show (kernels modernos)
+            ip = self.exec_cmd(
+                f"ip addr show {slot} 2>/dev/null"
+                f" | grep 'inet ' | awk '{{print $2}}' | cut -d/ -f1",
+                show_cmd=False) or ''
+            if ip.strip():
+                return ip.strip()
+            # Metodo 2: ifconfig (OpenWrt clasico)
+            ip2 = self.exec_cmd(
+                f"ifconfig {slot} 2>/dev/null"
+                f" | grep 'inet addr' | awk '{{print $2}}' | cut -d: -f2",
+                show_cmd=False) or ''
+            if ip2.strip():
+                return ip2.strip()
+            # Metodo 3: ubus / netifd
+            ip3 = self.exec_cmd(
+                f"ubus call network.interface.{slot} status 2>/dev/null"
+                f" | grep '\"address\"' | head -1 | awk -F'\"' '{{print $4}}'",
+                show_cmd=False) or ''
+            return ip3.strip()
+
+        # -- Fase 1: Formulario -----------------------------------------------
         def _sim_col(n: str):
             slot = 'mob1s1a1' if n == '1' else 'mob1s2a1'
             return sg.Column([
-                [sg.Text(f'SIM {n}  Â·  {slot}',
+                [sg.Text(f'SIM {n}  \u00b7  {slot}',
                          font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
                          pad=(0, (6, 6)))],
                 [sg.Text('APN:', size=(12, 1), text_color=TEXT),
                  sg.InputText('internet.itelcel.com', key=f'S{n}_APN', size=(24, 1))],
                 [sg.Text('Usuario:', size=(12, 1), text_color=DIM),
                  sg.InputText('webgprs', key=f'S{n}_USER', size=(24, 1))],
-                [sg.Text('ContraseÃ±a:', size=(12, 1), text_color=DIM),
+                [sg.Text('Contrasena:', size=(12, 1), text_color=DIM),
                  sg.InputText('webgprs2002', key=f'S{n}_PASS',
-                              size=(24, 1), password_char='â—')],
+                              size=(24, 1), password_char='\u25cf')],
                 [sg.Text('Auth:', size=(12, 1), text_color=TEXT),
                  sg.Combo(['none', 'pap', 'chap'], default_value='none',
                           key=f'S{n}_AUTH', size=(10, 1),
@@ -296,48 +341,48 @@ class RUT956ConfigGUI:
             ], background_color=BG2, pad=(6, 4))
 
         form_layout = [
-            [sg.Text('ðŸ“¡  ConfiguraciÃ³n SIM 4G â€” RUT956  (Dual SIM)',
+            [sg.Text('\U0001f4e1  Configuracion SIM 4G  -  RUT956  (Dual SIM)',
                      font=('Segoe UI', 12, 'bold'), text_color=ACCT2,
                      pad=(0, (10, 4)))],
-            [sg.Text('Ambas SIMs se configurarÃ¡n en paralelo con los datos de tu operador.',
+            [sg.Text('Ambas SIMs se configuraran en paralelo con los datos de tu operador.',
                      text_color=DIM, font=('Segoe UI', 8), pad=(0, (0, 8)))],
             [sg.HorizontalSeparator(color=BG3)],
             [_sim_col('1'), sg.VSep(color=BG3, pad=(10, 4)), _sim_col('2')],
             [sg.HorizontalSeparator(color=BG3, pad=(0, 6))],
-            [sg.Checkbox('  Copiar configuraciÃ³n de SIM 1 â†’ SIM 2',
+            [sg.Checkbox('  Copiar configuracion de SIM 1 a SIM 2',
                          key='COPY_SIM', default=True,
                          text_color=DIM, background_color=BG1,
                          font=('Segoe UI', 9))],
             [sg.Text(
-                'ðŸ’¡  Si una SIM no estÃ¡ presente el proceso la marcarÃ¡ como N/A y continuarÃ¡.\n'
-                '    Deja usuario/contraseÃ±a vacÃ­os si tu operador no los requiere.',
+                '\U0001f4a1  Si una SIM no esta presente el proceso la marcara como N/A '
+                'y continuara con la otra.\n'
+                '    Deja usuario/contrasena vacios si tu operador no los requiere.',
                 text_color=DIM, font=('Segoe UI', 8), pad=(0, (2, 8)))],
             [sg.Push(),
-             sg.Button('â–¶  Iniciar configuraciÃ³n', key='START', size=(22, 1),
+             sg.Button('\u25b6  Iniciar configuracion', key='START', size=(22, 1),
                        button_color=(TEXT, '#186840'),
                        font=('Segoe UI', 10, 'bold')),
-             sg.Button('âœ•  Cancelar', key='CANCEL', size=(13, 1),
+             sg.Button('\u2715  Cancelar', key='CANCEL', size=(13, 1),
                        button_color=(TEXT, '#4a1010'),
                        font=('Segoe UI', 9, 'bold'))],
         ]
 
         form_win = sg.Window(
-            'Configurar SIM 4G â€” RUT956',
+            'Configurar SIM 4G - RUT956',
             form_layout, finalize=True,
             background_color=BG1, modal=True, keep_on_top=True,
         )
 
-        cfgs: list[dict] | None = None
+        cfgs: list = []
         while True:
             ev, va = form_win.read()
             if ev in (sg.WINDOW_CLOSED, 'CANCEL'):
                 form_win.close()
-                self._log('ConfiguraciÃ³n SIM cancelada por usuario', 'INFO')
-                self._set_status('SIM 4G â€” Cancelado', DIM)
+                self._log('Configuracion SIM cancelada por usuario', 'INFO')
+                self._set_status('SIM 4G - Cancelado', DIM)
                 return
             if ev == 'START':
                 if va.get('COPY_SIM'):
-                    # Copiar campos SIM1 â†’ SIM2 antes de leer valores
                     for f in ('APN', 'USER', 'PASS', 'AUTH', 'PDP'):
                         form_win[f'S2_{f}'].update(va[f'S1_{f}'])
                     va = form_win.read(timeout=0)[1]
@@ -355,10 +400,10 @@ class RUT956ConfigGUI:
                 form_win.close()
                 break
 
-        # â”€â”€ Fase 2: Ventana de progreso con checklist â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # -- Fase 2: Ventana de progreso con checklist ------------------------
         def _step_row(prefix: str, sid: str, label: str) -> list:
             return [
-                sg.Text('â—‹', key=f'{prefix}_{sid}_ICO',
+                sg.Text('o', key=f'{prefix}_{sid}_ICO',
                         text_color=DIM, font=('Consolas', 11, 'bold'),
                         size=(2, 1), pad=((8, 2), 1)),
                 sg.Text(label, key=f'{prefix}_{sid}_LBL',
@@ -370,7 +415,7 @@ class RUT956ConfigGUI:
             slot = 'mob1s1a1' if n == '1' else 'mob1s2a1'
             prefix = f'S{n}'
             rows: list = [
-                [sg.Text(f'SIM {n}  Â·  {slot}',
+                [sg.Text(f'SIM {n}  \u00b7  {slot}',
                          font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
                          pad=(8, (8, 6)))],
                 [sg.HorizontalSeparator(color=BG3, pad=((8, 8), 2))],
@@ -379,20 +424,20 @@ class RUT956ConfigGUI:
                 rows.append(_step_row(prefix, sid, slbl))
             rows += [
                 [sg.HorizontalSeparator(color=BG3, pad=((8, 8), (6, 2)))],
-                [sg.Text('â³  En progresoâ€¦',
+                [sg.Text('\u23f3  En progreso...',
                          key=f'{prefix}_RESULT',
                          text_color=AMBER,
                          font=('Segoe UI', 9, 'bold'),
-                         size=(38, 3), pad=(8, 2))],
+                         size=(38, 4), pad=(8, 2))],
             ]
             return sg.Column(rows, background_color=BG2,
                              pad=(4, 4), expand_x=True)
 
         prog_layout = [
-            [sg.Text('ðŸ“¡  ConfiguraciÃ³n SIM 4G â€” RUT956  (Dual SIM en paralelo)',
+            [sg.Text('\U0001f4e1  Configuracion SIM 4G  -  RUT956  (Dual SIM en paralelo)',
                      font=('Segoe UI', 12, 'bold'), text_color=ACCT2,
                      pad=(10, (10, 4)))],
-            [sg.Text('Configurando SIM1 y SIM2 simultÃ¡neamenteâ€¦',
+            [sg.Text('Configurando SIM1 y SIM2 simultaneamente...',
                      key='PROG_SUB', text_color=DIM,
                      font=('Segoe UI', 8), pad=(10, (0, 8)))],
             [sg.HorizontalSeparator(color=BG3)],
@@ -407,32 +452,24 @@ class RUT956ConfigGUI:
                           background_color=CLBG, text_color='#7ab8f0',
                           expand_x=True, pad=(8, 2))],
             [sg.Push(),
-             sg.Button('âœ“  Cerrar', key='CLOSE', size=(14, 1),
+             sg.Button('\u2713  Cerrar', key='CLOSE', size=(14, 1),
                        button_color=(TEXT, '#186840'),
                        font=('Segoe UI', 10, 'bold'),
-                       disabled=True,
-                       pad=(8, 6))],
+                       disabled=True, pad=(8, 6))],
         ]
 
         prog_win = sg.Window(
-            'Progreso â€” ConfiguraciÃ³n SIM 4G',
+            'Progreso - Configuracion SIM 4G',
             prog_layout, finalize=True,
             background_color=BG1, modal=True,
-            keep_on_top=True, size=(900, 640),
+            keep_on_top=True, size=(900, 660),
         )
 
-        # Estilo extra del log
-        try:
-            prog_win['PROG_LOG'].Widget.config(
-                fg='#7ab8f0', bg=CLBG, relief='flat', bd=0)
-        except Exception:
-            pass
+        prog_log_lines: list = []
+        done_count = [0]
+        spin_tick = [0]   # contador de animacion compartido
 
-        prog_log_lines: list[str] = []
-        done_count = [0]   # contador mutable compartido entre threads
-
-        # â”€â”€ Workers de configuraciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        # SIM1 hace el network restart; SIM2 espera a que termine.
+        # -- Workers de configuracion -----------------------------------------
         restart_event = _threading.Event()
 
         def sim_worker(cfg: dict, is_primary: bool) -> None:
@@ -445,20 +482,18 @@ class RUT956ConfigGUI:
             pdp    = cfg['pdp']
             prefix = f'S{sim_n}'
 
-            # â”€â”€ helpers de UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            def upd(sid: str, state: str, label: str = '', detail: str = '') -> None:
-                """EnvÃ­a actualizaciÃ³n de paso al event loop de prog_win."""
+            def upd(sid: str, state: str, label: str = '',
+                    detail: str = '') -> None:
                 ico, col = ST[state]
                 prog_win.write_event_value('__UPD__', {
                     'prefix': prefix, 'sid': sid,
                     'ico': ico, 'col': col, 'label': label,
                 })
                 if detail:
-                    prog_win.write_event_value('__LOG__',
-                                               f'SIM{sim_n}â”‚{detail}')
+                    prog_win.write_event_value(
+                        '__LOG__', f'SIM{sim_n} | {detail}')
 
             def finish(state: str, msg: str) -> None:
-                """EnvÃ­a resultado final + notifica que este SIM terminÃ³."""
                 prog_win.write_event_value('__RESULT__', {
                     'prefix': prefix, 'state': state, 'msg': msg,
                 })
@@ -466,57 +501,57 @@ class RUT956ConfigGUI:
                 prog_win.write_event_value('__DONE__', done_count[0])
 
             def _real_operator(val: str) -> bool:
-                """True si val parece un nombre de operador, no un ID de hardware."""
                 if not val or val.upper() in ('N/A', 'UNKNOWN', ''):
                     return False
-                # Identificadores de hardware: alfanum sin espacios, > 10 cars
-                if len(val) > 10 and ' ' not in val and val.replace('-', '').isalnum():
+                # Identificadores de hardware: alfanum sin espacios, > 10 chars
+                if (len(val) > 10 and ' ' not in val
+                        and val.replace('-', '').isalnum()):
                     return False
                 return True
 
-            # â”€â”€ PASO 0: DiagnÃ³stico inicial â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            upd('diag', 'run', 'Verificando modem y SIMâ€¦')
+            # -- PASO 0: Diagnostico inicial ----------------------------------
+            upd('diag', 'run', 'Verificando modem y SIM...')
             sim_st = self.exec_cmd(
-                'gsmctl -z 2>/dev/null || echo "N/A"', show_cmd=False) or 'N/A'
+                'gsmctl -z 2>/dev/null || echo "N/A"',
+                show_cmd=False) or 'N/A'
             iccid  = self.exec_cmd(
-                'gsmctl -J 2>/dev/null || echo "N/A"', show_cmd=False) or 'N/A'
+                'gsmctl -J 2>/dev/null || echo "N/A"',
+                show_cmd=False) or 'N/A'
             imei   = self.exec_cmd(
-                'gsmctl -m 2>/dev/null || echo "N/A"', show_cmd=False) or 'N/A'
+                'gsmctl -m 2>/dev/null || echo "N/A"',
+                show_cmd=False) or 'N/A'
 
-            upd('diag', 'run', f'SIM: {sim_st}',
-                f'ICCID:{iccid}  IMEI:{imei}')
+            upd('diag', 'run', f'Estado SIM: {sim_st.strip()}',
+                f'ICCID:{iccid.strip()}  IMEI:{imei.strip()}')
 
             if 'not inserted' in sim_st.lower():
-                upd('diag', 'err', f'SIM {sim_n}: no detectada fÃ­sicamente',
-                    f'Estado:{sim_st}')
-                # Marcar pasos restantes como skip
+                upd('diag', 'err', f'SIM {sim_n}: no detectada fisicamente',
+                    f'Estado:{sim_st.strip()}')
                 for sid, _ in STEPS[1:]:
-                    upd(sid, 'skip', 'N/A â€” SIM no presente')
+                    upd(sid, 'skip', 'N/A - SIM no presente')
                 finish('err',
-                       f'âœ—  SIM {sim_n}: no insertada\n'
-                       'Verifica el contacto fÃ­sico de la SIM en el router.')
+                       f'\u2717  SIM {sim_n}: no insertada\n'
+                       'Verifica el contacto fisico de la SIM en el router.')
                 if is_primary:
-                    restart_event.set()   # desbloquear SIM2 igualmente
+                    restart_event.set()
                 return
 
-            upd('diag', 'ok', f'SIM {sim_n} detectada  Â·  {sim_st}',
-                f'ICCID:{iccid}  IMEI:{imei}')
+            upd('diag', 'ok',
+                f'SIM {sim_n} detectada  \u00b7  {sim_st.strip()}',
+                f'ICCID:{iccid.strip()}  IMEI:{imei.strip()}')
 
-            # â”€â”€ PASO CLEAN: Limpiar interfaces residuales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            upd('clean', 'run', 'Buscando interfaces residualesâ€¦')
-            # Eliminar wan_4g si existe (creada por configuraciones errÃ³neas)
+            # -- PASO CLEAN: Limpiar interfaces residuales --------------------
+            upd('clean', 'run', 'Buscando interfaces residuales...')
             self.exec_cmd(
                 "uci -q get network.wan_4g >/dev/null 2>&1 && "
                 "{ uci delete network.wan_4g; uci commit network; "
                 "echo 'wan_4g eliminada'; } || echo 'limpio'",
                 show_cmd=False)
-            upd('clean', 'ok', 'Interfaces limpias (wan_4g removida)')
+            upd('clean', 'ok', 'Interfaces limpias (wan_4g removida si existia)')
 
-            # â”€â”€ PASO UCI: ConfiguraciÃ³n completa segÃºn firmware RUT9M_R_00.07.19 â”€â”€
-            upd('uci', 'run', f'Escribiendo UCI completo para {slot}â€¦')
-            # Opciones que coinciden con el dump real del firmware:
-            #   proto, sim, modem, apn, pdptype, auth, username, password,
-            #   auto_apn, pdp, dhcpv6, area_type, metric, mtu, delegate, method
+            # -- PASO UCI: Configuracion segun firmware RUT9M_R_00.07.19 -----
+            upd('uci', 'run',
+                f'Escribiendo UCI completo para {slot}...')
             cmd_uci = (
                 f"uci set network.{slot}.proto='wwan'\n"
                 f"uci set network.{slot}.sim='{sim_n}'\n"
@@ -538,13 +573,13 @@ class RUT956ConfigGUI:
             cmd_uci += 'uci commit network'
             out = self.exec_cmd(cmd_uci, show_cmd=False) or ''
             if 'error' in out.lower():
-                upd('uci', 'warn', 'UCI con advertencias', out[:80])
+                upd('uci', 'warn', 'UCI aplicado con advertencias', out[:80])
             else:
                 upd('uci', 'ok',
-                    f'UCI completo  Â·  {slot}  APN={apn}  auto_apn=1')
+                    f'UCI OK  \u00b7  {slot}  APN={apn}  auto_apn=1')
 
-            # â”€â”€ PASO 2: Firewall â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            upd('fw', 'run', 'Verificando zona WANâ€¦')
+            # -- PASO Firewall ------------------------------------------------
+            upd('fw', 'run', 'Verificando zona WAN...')
             cur = self.exec_cmd(
                 "uci get firewall.@zone[1].network 2>/dev/null || echo ''",
                 show_cmd=False) or ''
@@ -553,28 +588,28 @@ class RUT956ConfigGUI:
                     f"uci add_list firewall.@zone[1].network='{slot}'\n"
                     "uci commit firewall",
                     show_cmd=False)
-                upd('fw', 'ok', f'{slot} aÃ±adido a zona WAN')
+                upd('fw', 'ok', f'{slot} anadido a zona WAN')
             else:
                 upd('fw', 'ok', f'{slot} ya estaba en zona WAN')
 
-            # â”€â”€ PASO 3: Restart (solo SIM1 lo hace) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- PASO Restart: solo SIM1 reinicia la red ---------------------
             if is_primary:
-                upd('restart', 'run', 'Reiniciando servicio de redâ€¦')
+                upd('restart', 'run', 'Reiniciando servicio de red...')
                 self.exec_cmd('/etc/init.d/network restart', show_cmd=False)
-                upd('restart', 'ok', 'Red reiniciada  Â·  esperando 5 sâ€¦')
+                upd('restart', 'ok', 'Red reiniciada  \u00b7  esperando 5 s...')
                 _time.sleep(5)
-                restart_event.set()   # desbloquea a SIM2
+                restart_event.set()
             else:
-                upd('restart', 'run', 'Esperando reinicio de SIM1â€¦')
+                upd('restart', 'run', 'Esperando reinicio de red (SIM1)...')
                 restart_event.wait(timeout=90)
                 upd('restart', 'ok', 'Red reiniciada (por SIM1)')
 
-            # â”€â”€ PASO 4: ifup â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            upd('ifup', 'run', f'Forzando ifup {slot}â€¦')
+            # -- PASO ifup ---------------------------------------------------
+            upd('ifup', 'run', f'Forzando ifup {slot}...')
             self.exec_cmd(f'ifup {slot} 2>/dev/null || true', show_cmd=False)
             upd('ifup', 'ok', f'ifup {slot} ejecutado')
 
-            # â”€â”€ PASOS 6-9: Rondas de espera con countdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- Rondas de espera con countdown ------------------------------
             ROUND_SECS = 15
             round_ids  = ['r1', 'r2', 'r3', 'r4']
             connected  = False
@@ -584,103 +619,125 @@ class RUT956ConfigGUI:
                 rnd_lbl = STEPS[6 + rnd_i][1]
 
                 for t in range(ROUND_SECS, 0, -1):
-                    upd(rid, 'run', f'{rnd_lbl}  ({t}sâ€¦)')
+                    upd(rid, 'run', f'{rnd_lbl}  ({t}s...)')
                     _time.sleep(1)
 
-                # Leer estado del modem al final de la ronda
-                s_sim  = self.exec_cmd('gsmctl -z 2>/dev/null || echo "N/A"',
-                                       show_cmd=False) or 'N/A'
-                s_oper = self.exec_cmd('gsmctl -a 2>/dev/null || echo "N/A"',
-                                       show_cmd=False) or 'N/A'
-                s_net  = self.exec_cmd('gsmctl -n 2>/dev/null || echo "N/A"',
-                                       show_cmd=False) or 'N/A'
-                s_sig  = self.exec_cmd('gsmctl -q 2>/dev/null || echo "N/A"',
-                                       show_cmd=False) or 'N/A'
-                s_band = self.exec_cmd('gsmctl -b 2>/dev/null || echo "N/A"',
-                                       show_cmd=False) or 'N/A'
-                s_ip   = self.exec_cmd(
-                    f"ip addr show {slot} 2>/dev/null"
-                    f" | grep 'inet ' | awk '{{print $2}}'",
-                    show_cmd=False) or ''
-                last_state = {'sim': s_sim, 'oper': s_oper,
-                              'ntype': s_net, 'sig': s_sig,
-                              'band': s_band, 'ip': s_ip}
+                # Leer estado del modem
+                s_sim  = self.exec_cmd(
+                    'gsmctl -z 2>/dev/null || echo "N/A"',
+                    show_cmd=False) or 'N/A'
+                s_oper = self.exec_cmd(
+                    'gsmctl -a 2>/dev/null || echo "N/A"',
+                    show_cmd=False) or 'N/A'
+                s_net  = self.exec_cmd(
+                    'gsmctl -n 2>/dev/null || echo "N/A"',
+                    show_cmd=False) or 'N/A'
+                # gsmctl -q RSSI/RSRP/SINR/RSRQ (mejor que -s)
+                s_qual = self.exec_cmd(
+                    'gsmctl -q 2>/dev/null || echo "N/A"',
+                    show_cmd=False) or 'N/A'
+                s_band = self.exec_cmd(
+                    'gsmctl -b 2>/dev/null || echo "N/A"',
+                    show_cmd=False) or 'N/A'
+                s_ip   = _get_ip(slot)
 
-                # gsmctl -q devuelve algo como "RSSI: -73\nRSRP: -104â€¦"
-                has_signal = ('RSSI' in s_sig and 'N/A' not in s_sig)
-                ok_o = _real_operator(s_oper)
-                ok_i = bool(s_ip)
-                detail = (f'SIM={s_sim} Oper={s_oper} '
-                          f'Red={s_net} Banda={s_band} IP={s_ip or "â€“"} '
-                          f'SeÃ±al={s_sig[:40]}')
+                last_state = {
+                    'sim': s_sim.strip(), 'oper': s_oper.strip(),
+                    'ntype': s_net.strip(), 'qual': s_qual,
+                    'band': s_band.strip(), 'ip': s_ip,
+                }
 
-                if has_signal or ok_o or ok_i:
-                    upd(rid, 'ok', f'{rnd_lbl}  âœ“ CONECTADO', detail)
+                # Deteccion de senal: gsmctl -q devuelve "RSSI: -73\nRSRP: ..."
+                has_signal = ('RSSI' in s_qual and 'N/A' not in s_qual)
+                ok_oper    = _real_operator(s_oper.strip())
+                ok_ip      = bool(s_ip)
+
+                # Extraer RSSI para el log
+                rssi_line = next(
+                    (l for l in s_qual.splitlines() if 'RSSI' in l), '')
+                detail = (
+                    f'SIM={s_sim.strip()}  Oper={s_oper.strip()}  '
+                    f'Red={s_net.strip()}  Banda={s_band.strip()}  '
+                    f'IP={s_ip or "-"}  {rssi_line.strip()}'
+                )
+
+                if has_signal or ok_oper or ok_ip:
+                    upd(rid, 'ok',
+                        f'{rnd_lbl}  \u2713 CONECTADO', detail)
                     connected = True
-                    # Marcar rondas restantes como skip
                     for skip_id in round_ids[rnd_i + 1:]:
                         upd(skip_id, 'skip', '(no necesario)')
                     break
                 else:
-                    upd(rid, 'warn', f'{rnd_lbl}  sin seÃ±alâ€¦', detail)
+                    upd(rid, 'warn',
+                        f'{rnd_lbl}  sin senal...', detail)
                     if rnd_i < len(round_ids) - 1:
-                        # Reiniciar modem y reintentar
-                        upd(rid, 'warn', f'{rnd_lbl}  â†» reboot modemâ€¦')
+                        upd(rid, 'warn',
+                            f'{rnd_lbl}  reiniciando modem...')
                         self.exec_cmd(
                             f'gsmctl -Q 2>/dev/null || true; '
                             f'ifup {slot} 2>/dev/null || true',
                             show_cmd=False)
 
-            # â”€â”€ PASO final: DiagnÃ³stico completo â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            upd('final', 'run', 'DiagnÃ³stico finalâ€¦')
+            # -- Diagnostico final -------------------------------------------
+            upd('final', 'run', 'Diagnostico final...')
             s = last_state
-            has_sig   = ('RSSI' in s.get('sig', '') and 'N/A' not in s.get('sig', ''))
+            has_sig   = ('RSSI' in s.get('qual', '')
+                         and 'N/A' not in s.get('qual', ''))
             ok_oper   = _real_operator(s.get('oper', ''))
             ok_ip     = bool(s.get('ip', ''))
             ok_sim    = ('inserted' in s.get('sim', '').lower()
                          or 'ready' in s.get('sim', '').lower())
 
-            # Parsear niveles de seÃ±al para el resumen
-            sig_lines = s.get('sig', '').replace('\r', '').split('\n')
-            sig_summary = '  '.join(l.strip() for l in sig_lines if ':' in l)
-            band = s.get('band', '?')
+            # Parsear niveles de senal para resumen
+            qual_lines   = s.get('qual', '').replace('\r', '').split('\n')
+            sig_summary  = '  '.join(
+                l.strip() for l in qual_lines if ':' in l)
+            rssi_line    = next(
+                (l for l in qual_lines if 'RSSI' in l), '')
+            sig_bar      = _sig_bar(
+                rssi_line.replace('RSSI:', '').strip())
+            band         = s.get('band', '?')
 
             detail = (
                 f"SIM={s.get('sim','?')}  Oper={s.get('oper','?')}  "
                 f"Red={s.get('ntype','?')}  Banda={band}  "
-                f"IP={s.get('ip','â€”')}  {sig_summary}"
+                f"IP={s.get('ip','-')}  {sig_summary}"
             )
 
             if connected:
-                upd('final', 'ok', 'âœ“ Conectado a red celular', detail)
+                upd('final', 'ok',
+                    '\u2713 Conectado a red celular', detail)
                 finish('ok',
-                       f'âœ“  SIM {sim_n} CONECTADA\n'
-                       f'Oper: {s.get("oper","?")}  '
-                       f'Red: {s.get("ntype","?")}  '
-                       f'Banda: {band}\n'
+                       f'\u2713  SIM {sim_n} CONECTADA\n'
+                       f'Operador: {s.get("oper","?")}  '
+                       f'Red: {s.get("ntype","?")}  Banda: {band}\n'
+                       f'Senal: {sig_bar}\n'
                        f'{sig_summary}\n'
-                       f'IP: {s.get("ip") or "esperandoâ€¦"}')
+                       f'IP: {s.get("ip") or "esperando..."}')
             elif ok_sim:
-                upd('final', 'warn', 'SIM presente â€” sin datos aÃºn', detail)
+                upd('final', 'warn',
+                    'SIM presente - sin datos aun', detail)
                 finish('warn',
-                       f'âš   SIM {sim_n}: insertada, sin conexiÃ³n\n'
+                       f'\u26a0  SIM {sim_n}: insertada, sin conexion\n'
                        f'APN: {apn}  Banda: {band}\n'
-                       f'{sig_summary}\n'
+                       f'Senal: {sig_bar}\n'
                        'Verifica APN en WebUI y plan de datos')
             else:
-                upd('final', 'err', 'Sin respuesta del modem', detail)
+                upd('final', 'err',
+                    'Sin respuesta del modem', detail)
                 finish('err',
-                       f'âœ—  SIM {sim_n}: sin respuesta\n'
+                       f'\u2717  SIM {sim_n}: sin respuesta\n'
                        f'Estado: {s.get("sim","?")}  '
-                       'Verifica fÃ­sicamente la SIM y antena')
+                       'Verifica fisicamente la SIM y antena')
 
-        # â”€â”€ Lanzar ambos threads â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # -- Lanzar ambos threads --------------------------------------------
         _threading.Thread(
             target=sim_worker, args=(cfgs[0], True),  daemon=True).start()
         _threading.Thread(
             target=sim_worker, args=(cfgs[1], False), daemon=True).start()
 
-        # â”€â”€ Event loop de la ventana de progreso â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # -- Event loop de la ventana de progreso ----------------------------
         result_col = {'ok': GREEN, 'warn': AMBER, 'err': RED, 'skip': DIM}
 
         while True:
@@ -690,25 +747,31 @@ class RUT956ConfigGUI:
             except Exception:
                 pass
 
-            ev2, va2 = prog_win.read(timeout=150)
+            ev2, va2 = prog_win.read(timeout=200)
 
             if ev2 in (sg.WINDOW_CLOSED, 'CLOSE'):
                 break
 
             elif ev2 == '__UPD__':
-                d = va2['__UPD__']
-                p, s = d['prefix'], d['sid']
-                prog_win[f'{p}_{s}_ICO'].update(d['ico'],
-                                                text_color=d['col'])
+                d  = va2['__UPD__']
+                p  = d['prefix']
+                si = d['sid']
+                # Si es 'run', aplicar icono de animacion
+                ico = d['ico']
+                if d.get('col') == AMBER:
+                    ico = SPIN[spin_tick[0] % len(SPIN)]
+                    spin_tick[0] += 1
+                prog_win[f'{p}_{si}_ICO'].update(ico,
+                                                 text_color=d['col'])
                 if d.get('label'):
-                    prog_win[f'{p}_{s}_LBL'].update(d['label'],
-                                                    text_color=d['col'])
+                    prog_win[f'{p}_{si}_LBL'].update(
+                        d['label'], text_color=d['col'])
 
             elif ev2 == '__LOG__':
                 prog_log_lines.append(va2['__LOG__'])
 
             elif ev2 == '__RESULT__':
-                d = va2['__RESULT__']
+                d   = va2['__RESULT__']
                 col = result_col.get(d['state'], DIM)
                 prog_win[f"{d['prefix']}_RESULT"].update(
                     d['msg'], text_color=col)
@@ -716,15 +779,13 @@ class RUT956ConfigGUI:
             elif ev2 == '__DONE__':
                 if va2['__DONE__'] >= 2:
                     prog_win['PROG_SUB'].update(
-                        'âœ“  ConfiguraciÃ³n completada para ambas SIMs')
+                        '\u2713  Configuracion completada para ambas SIMs')
                     prog_win['CLOSE'].update(disabled=False)
                     self._set_status(
-                        'ðŸ“¡ SIM 4G â€” ConfiguraciÃ³n dual completada. '
-                        'Revisa los resultados en la ventana.', GREEN)
+                        '\U0001f4e1 SIM 4G - Configuracion dual completa. '
+                        'Revisa resultados en la ventana.', GREEN)
 
         prog_win.close()
-
-
 
     def configure_lan(self):
         if not self.connected:
@@ -771,7 +832,7 @@ class RUT956ConfigGUI:
         if not self.connected:
             self._log('No conectado al router', 'ERROR'); return
         if not network_id or len(network_id) != 16:
-            self._log('Network ID invÃ¡lido (debe tener 16 caracteres)', 'ERROR'); return
+            self._log('Network ID invalido (debe tener 16 caracteres)', 'ERROR'); return
         self._log('=== CONFIGURANDO ZEROTIER ===')
         self._set_progress(80, 'ZeroTier: Instalando')
         cmd = (
@@ -781,9 +842,9 @@ class RUT956ConfigGUI:
             f"zerotier-cli join {network_id}"
         )
         self.exec_cmd(cmd)
-        self._log('Esperando autorizaciÃ³n ZeroTier (5 s)â€¦', 'WAIT')
+        self._log('Esperando autorizacion ZeroTier (5 s)...', 'WAIT')
         self.exec_cmd('sleep 5')
-        self._log(f'ZeroTier configurado (Network: {network_id[:8]}â€¦)', 'OK')
+        self._log(f'ZeroTier configurado (Network: {network_id[:8]}...)', 'OK')
         self._set_progress(85, 'ZeroTier: Completado âœ“')
 
     def configure_firewall(self):
@@ -812,22 +873,22 @@ class RUT956ConfigGUI:
     # â”€â”€ Cambiar IP del router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def change_ip(self, new_ip: str, new_mask: str, new_gw: str) -> None:
-        """Cambia la IP LAN del router vÃ­a SSH."""
+        """Cambia la IP LAN del router via SSH."""
         if not self.connected:
             self._log('No conectado al router', 'ERROR')
-            self._set_status('Cambio de IP cancelado â€” no hay conexiÃ³n SSH activa', RED)
+            self._set_status('Cambio de IP cancelado â€” no hay conexion SSH activa', RED)
             return
 
-        # Validar formato bÃ¡sico IP
+        # Validar formato basico IP
         ip_re = re.compile(
             r'^(\d{1,3}\.){3}\d{1,3}$'
         )
         if not ip_re.match(new_ip):
-            self._log(f'IP invÃ¡lida: {new_ip}', 'ERROR')
-            self._set_status(f'IP invÃ¡lida: "{new_ip}" â€” usa formato X.X.X.X', RED)
+            self._log(f'IP invalida: {new_ip}', 'ERROR')
+            self._set_status(f'IP invalida: "{new_ip}" â€” usa formato X.X.X.X', RED)
             return
 
-        self._set_status(f'Cambio de IP â€” aplicando nueva direcciÃ³n {new_ip}â€¦', ACCT2)
+        self._set_status(f'Cambio de IP â€” aplicando nueva direccion {new_ip}...', ACCT2)
         self._log(f'=== CAMBIANDO IP DEL ROUTER â†’ {new_ip} ===')
         self._set_progress(10, 'Cambio IP: escribiendo UCI')
 
@@ -839,22 +900,22 @@ class RUT956ConfigGUI:
             cmd += f"uci set network.lan.gateway='{new_gw}'\n"
         cmd += "uci commit network"
 
-        self._set_status(f'Cambio de IP [1/2] â€” Guardando nueva IP {new_ip} en UCIâ€¦', ACCT2)
+        self._set_status(f'Cambio de IP [1/2] â€” Guardando nueva IP {new_ip} en UCI...', ACCT2)
         self._set_progress(40, f'Cambio IP: guardando {new_ip}')
         self.exec_cmd(cmd)
 
         self._set_status(
-            f'Cambio de IP [2/2] â€” Reiniciando redâ€¦ âš  La conexiÃ³n SSH se perderÃ¡.  '
-            f'ReconÃ©ctate usando la nueva IP: {new_ip}', AMBER
+            f'Cambio de IP [2/2] â€” Reiniciando red... âš  La conexion SSH se perdera.  '
+            f'Reconectate usando la nueva IP: {new_ip}', AMBER
         )
         self._set_progress(70, 'Cambio IP: reiniciando red')
         self._log(
-            f'âš  Reiniciando red â€” la sesiÃ³n SSH se cerrarÃ¡.  '
+            f'âš  Reiniciando red â€” la sesion SSH se cerrara.  '
             f'Usa la nueva IP {new_ip} para reconectarte.', 'WAIT'
         )
 
         # Lanzar restart en background en el router (no esperamos respuesta,
-        # porque la sesiÃ³n SSH se cerrarÃ¡ al cambiar la IP)
+        # porque la sesion SSH se cerrara al cambiar la IP)
         try:
             self.ssh.exec_command('/etc/init.d/network restart &')
         except Exception:
@@ -870,7 +931,7 @@ class RUT956ConfigGUI:
 
         self._set_progress(100, f'IP cambiada a {new_ip} âœ“')
         self._set_status(
-            f'âœ“ IP cambiada a {new_ip}  |  ReconÃ©ctate con esa IP en el campo superior', GREEN
+            f'âœ“ IP cambiada a {new_ip}  |  Reconectate con esa IP en el campo superior', GREEN
         )
         self._log(f'IP cambiada a {new_ip}. Recuerda reconectarte.', 'OK')
 
@@ -885,9 +946,9 @@ class RUT956ConfigGUI:
         self._set_progress(70, 'Validando: Celular')
         sig = self.exec_cmd("gsmctl -s 2>/dev/null || echo 'N/A'", show_cmd=False)
         if sig and sig != 'N/A':
-            self._log(f'SeÃ±al celular: {sig}', 'OK')
+            self._log(f'Senal celular: {sig}', 'OK')
         else:
-            self._log('SeÃ±al celular: No detectada', 'ERROR')
+            self._log('Senal celular: No detectada', 'ERROR')
 
         self._set_progress(80, 'Validando: ZeroTier')
         zt = self.exec_cmd("zerotier-cli status 2>/dev/null || echo 'N/A'", show_cmd=False)
@@ -899,7 +960,7 @@ class RUT956ConfigGUI:
         if snmp and '161' in snmp:
             self._log('SNMP: Escuchando en puerto 161', 'OK')
         else:
-            self._log('SNMP: No estÃ¡ activo', 'ERROR')
+            self._log('SNMP: No esta activo', 'ERROR')
 
         self._set_progress(100, 'âœ“ Validaciones completadas')
         self._log('TODAS LAS CONFIGURACIONES COMPLETADAS', 'OK')
@@ -908,12 +969,12 @@ class RUT956ConfigGUI:
 
     def _build_layout(self) -> list:
 
-        # â”€â”€ Tab 1: ConfiguraciÃ³n Router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # â”€â”€ Tab 1: Configuracion Router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         btn_cfg  = dict(font=('Segoe UI', 9, 'bold'), pad=(4, 4))
         btn_blue = dict(button_color=(TEXT, '#16408a'), **btn_cfg)
 
         tab_router = [
-            [sg.Text('ConexiÃ³n SSH al Router',
+            [sg.Text('Conexion SSH al Router',
                      font=('Segoe UI', 11, 'bold'), text_color=ACCT2, pad=(0, (10, 6)))],
 
             [sg.Text('IP Router:',  size=(12, 1), text_color=DIM),
@@ -923,7 +984,7 @@ class RUT956ConfigGUI:
              sg.InputText(self.config.get('username', 'admin'),
                           key='USER', size=(16, 1))],
 
-            [sg.Text('ContraseÃ±a:', size=(12, 1), text_color=DIM),
+            [sg.Text('Contrasena:', size=(12, 1), text_color=DIM),
              sg.InputText('', key='PASS', password_char='â—', size=(20, 1)),
              sg.Button('âš¡ Conectar', key='BTN_CONNECT', size=(13, 1),
                        button_color=(TEXT, ACCENT), **btn_cfg)],
@@ -933,7 +994,7 @@ class RUT956ConfigGUI:
 
             [sg.HorizontalSeparator(color=BG3, pad=(0, 4))],
 
-            [sg.Text('ConfiguraciÃ³n del Router',
+            [sg.Text('Configuracion del Router',
                      font=('Segoe UI', 9, 'bold'), text_color=DIM, pad=(0, 4))],
 
             # Fila 1: acciones de red
@@ -948,7 +1009,7 @@ class RUT956ConfigGUI:
             # Fila 2: cambio de IP
             [sg.Button('ðŸ”„ Cambiar IP Router', key='BTN_CHANGE_IP', size=(20, 1),
                        button_color=(TEXT, '#2a5080'), **btn_cfg),
-             sg.Text('Cambia la IP LAN del router y reconÃ©ctate con la nueva direcciÃ³n.',
+             sg.Text('Cambia la IP LAN del router y reconectate con la nueva direccion.',
                      text_color=DIM, font=('Segoe UI', 8))],
 
             [sg.HorizontalSeparator(color=BG3, pad=(0, 6))],
@@ -1017,7 +1078,7 @@ class RUT956ConfigGUI:
                      font=('Segoe UI', 9, 'bold'), size=(18, 1))],
         ]
 
-        # â”€â”€ Layout raÃ­z â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # â”€â”€ Layout raiz â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         layout = [
             # Header bar
             [sg.Text('âš™', font=('Segoe UI', 20), text_color=ACCT2, pad=((10, 4), 8)),
@@ -1032,7 +1093,7 @@ class RUT956ConfigGUI:
             [sg.HorizontalSeparator(color=ACCENT, pad=(0, 0))],
 
             [sg.TabGroup(
-                [[sg.Tab('  ðŸ”§ ConfiguraciÃ³n Router  ', tab_router,
+                [[sg.Tab('  ðŸ”§ Configuracion Router  ', tab_router,
                          background_color=BG1),
                   sg.Tab('  ðŸ“¡ Dispositivos en Red   ', tab_devices,
                          background_color=BG1)]],
@@ -1100,8 +1161,8 @@ class RUT956ConfigGUI:
     def run(self) -> None:
         self.window = self.create_window()
         self._log('RUT956 CONFIGURATOR v2.0 iniciado', 'OK')
-        self._log('Configura la conexiÃ³n SSH en la pestaÃ±a "ConfiguraciÃ³n Router"', 'INFO')
-        self._log('Usa la pestaÃ±a "Dispositivos en Red" para escanear tu red local', 'INFO')
+        self._log('Configura la conexion SSH en la pestana "Configuracion Router"', 'INFO')
+        self._log('Usa la pestana "Dispositivos en Red" para escanear tu red local', 'INFO')
 
         while True:
             # Refrescar log
@@ -1134,12 +1195,12 @@ class RUT956ConfigGUI:
                 usr = values['USER'].strip()
                 pwd = values['PASS'].strip()
                 if not all([ip, usr, pwd]):
-                    self._log('Completa todos los campos de conexiÃ³n', 'ERROR')
+                    self._log('Completa todos los campos de conexion', 'ERROR')
                     continue
                 if self.connect(ip, usr, pwd):
                     self.window['STATUS'].update(f'â— Conectado a {ip}', text_color=GREEN)
                 else:
-                    self.window['STATUS'].update('â— Error de conexiÃ³n', text_color=RED)
+                    self.window['STATUS'].update('â— Error de conexion', text_color=RED)
 
             elif event == 'BTN_SIM':
                 # El wizard gestiona sus propios threads internamente;
@@ -1177,14 +1238,14 @@ class RUT956ConfigGUI:
                     [sg.HorizontalSeparator(color=BG3)],
                     [sg.Text('Nueva IP:', size=(14, 1), text_color=TEXT),
                      sg.InputText('192.168.1.1', key='NEW_IP', size=(20, 1))],
-                    [sg.Text('MÃ¡scara:', size=(14, 1), text_color=TEXT),
+                    [sg.Text('Mascara:', size=(14, 1), text_color=TEXT),
                      sg.InputText('255.255.255.0', key='NEW_MASK', size=(20, 1))],
                     [sg.Text('Gateway (opc.):', size=(14, 1), text_color=DIM),
                      sg.InputText('', key='NEW_GW', size=(20, 1))],
                     [sg.HorizontalSeparator(color=BG3)],
                     [sg.Text(
-                        'âš  La sesiÃ³n SSH se cerrarÃ¡ al aplicar el cambio.\n'
-                        '   ReconÃ©ctate usando la nueva IP.',
+                        'âš  La sesion SSH se cerrara al aplicar el cambio.\n'
+                        '   Reconectate usando la nueva IP.',
                         text_color=AMBER, font=('Segoe UI', 8))],
                     [sg.Push(),
                      sg.Button('âœ“ Aplicar', key='APPLY', size=(10, 1),
@@ -1221,7 +1282,7 @@ class RUT956ConfigGUI:
                 new_ip = values[event]
                 self.window['IP'].update(new_ip)
                 self.window['STATUS'].update(
-                    f'â— Desconectado â€” reconÃ©ctate con {new_ip}', text_color=AMBER)
+                    f'â— Desconectado â€” reconectate con {new_ip}', text_color=AMBER)
 
             # â”€â”€ Dispositivos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             elif event == 'BTN_SCAN':
@@ -1230,7 +1291,7 @@ class RUT956ConfigGUI:
                 self._scanning = True
                 self.devices_data.clear()
                 self.window['DEV_TABLE'].update(values=[])
-                self.window['DEV_STATUS'].update('ðŸ” Escaneando red localâ€¦ por favor espera')
+                self.window['DEV_STATUS'].update('ðŸ” Escaneando red local... por favor espera')
                 self.window['SEL_IP'].update('â€”')
                 threading.Thread(
                     target=scan_network_thread,
@@ -1238,19 +1299,19 @@ class RUT956ConfigGUI:
                 ).start()
 
             elif event == 'SCAN_ROW':
-                # Un dispositivo llegÃ³ del hilo
+                # Un dispositivo llego del hilo
                 row = values[event]
                 self.devices_data.append(row)
                 self.window['DEV_TABLE'].update(values=self.devices_data)
                 n = len(self.devices_data)
                 self.window['DEV_STATUS'].update(
-                    f'ðŸ” Encontrados {n} dispositivo(s)â€¦')
+                    f'ðŸ” Encontrados {n} dispositivo(s)...')
 
             elif event == 'SCAN_DONE':
                 self._scanning = False
                 n = len(self.devices_data)
                 msg = (f'âœ“ Escaneo completado â€” {n} dispositivo(s) encontrado(s)'
-                       if n else 'âš  No se encontraron dispositivos (red vacÃ­a o sin ARP)')
+                       if n else 'âš  No se encontraron dispositivos (red vacia o sin ARP)')
                 self.window['DEV_STATUS'].update(msg)
 
             elif event == 'DEV_TABLE':
