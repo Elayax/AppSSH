@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # 🔧 RUT956 CONFIGURATOR v1.0
 
 **Herramienta simple para configurar routers Teltonika RUT956 remotamente**
@@ -149,3 +150,6 @@ Herramienta de código abierto. Úsala libremente.
 ---
 
 **¡Hecho! Tu herramienta está lista para usar.** 🚀
+=======
+# AppSSH
+>>>>>>> e1ce5f26b2b310ab8a18ee1f6db6840d817461e0
