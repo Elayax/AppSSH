@@ -1,6 +1,6 @@
 {
-  "router_ip": "192.168.1.1",
-  "username": "admin",
+  "router_ip": "192.168.10.205",
+  "username": "root",
   "version": "1.0",
   "created": "2026-02-24"
 }
