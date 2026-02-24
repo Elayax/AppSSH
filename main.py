@@ -15,9 +15,9 @@ import threading
 import webbrowser
 from datetime import datetime
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ==============================================================================
 #  PALETA â€” Dark Navy Elegante
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ==============================================================================
 BG1    = '#08111f'   # fondo principal  (navy profundo)
 BG2    = '#0d1e36'   # fondo secundario
 BG3    = '#142848'   # inputs / filas alternas
@@ -47,9 +47,9 @@ sg.theme('EliteNavy')
 NO_WIN = 0x08000000   # CREATE_NO_WINDOW (Windows)
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ==============================================================================
 #  UTILIDADES DE RED
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ==============================================================================
 
 def ping_host(ip: str, timeout_ms: int = 800) -> bool:
     """Ping silencioso (oculta la ventana de consola en Windows)."""
@@ -133,9 +133,9 @@ def scan_network_thread(window) -> None:
     window.write_event_value('SCAN_DONE', count[0])
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ==============================================================================
 #  CLASE PRINCIPAL
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ==============================================================================
 
 class RUT956ConfigGUI:
 
@@ -154,7 +154,7 @@ class RUT956ConfigGUI:
         self._status_color = DIM
         # Comunicacion thread-safe para el popup de configuracion SIM
 
-    # â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Config ----------------------------------------------------------------
 
     def _load_config(self) -> dict:
         if os.path.exists('config.json'):
@@ -172,17 +172,222 @@ class RUT956ConfigGUI:
         except Exception as e:
             self._log(f'Error guardando config: {e}', 'ERROR')
 
-    # â”€â”€ Log â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Log -------------------------------------------------------------------
 
     def _log(self, msg: str, level: str = 'INFO') -> None:
         ts    = datetime.now().strftime('%H:%M:%S')
-        icons = {'INFO': 'â€º', 'OK': 'âœ“', 'ERROR': 'âœ—', 'WAIT': '...', 'CMD': '$'}
-        line  = f'[{ts}] {icons.get(level, "·")} {msg}'
+        icons = {'INFO': '>', 'OK': '[OK]', 'ERROR': '[X]', 'WAIT': '...', 'CMD': '$'}
+        line  = f'[{ts}] {icons.get(level, ".")} {msg}'
         self.log_lines.append(line)
         if len(self.log_lines) > 300:
             self.log_lines.pop(0)
 
-    # â”€â”€ SSH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Roadmap State Detection + Interactive Tree ---------------------------
+
+    # Acciones al hacer clic en cada nodo del arbol
+    ROADMAP_ACTIONS = {
+        'SSH':  'BTN_CONNECT',
+        'LAN':  'BTN_LAN',
+        'SIM':  'BTN_SIM',
+        'SNMP': 'BTN_SNMP',
+        'ZT':   'BTN_ZT',
+        'FW':   'BTN_FW',
+    }
+
+    def _update_roadmap(self) -> None:
+        """Hilo de fondo: actualiza estado del Roadmap y el panel de parametros."""
+        if not self.connected or not self.ssh:
+            for k in self.ROADMAP_ACTIONS:
+                try:
+                    self.window[f'RD_BTN_{k}'].update(button_color=(DIM, BG2))
+                except Exception:
+                    pass
+            return
+
+        def _check():
+            try:
+                data = {}
+
+                # 1. SSH ok
+                self.window.write_event_value('__RD__', ('SSH', GREEN))
+
+                # 2. LAN
+                lan_ip = self.exec_cmd(
+                    "uci get network.lan.ipaddr 2>/dev/null", show_cmd=False) or ''
+                c_lan = GREEN if lan_ip and lan_ip.strip() != '192.168.1.1' else AMBER
+                data['lan_ip'] = lan_ip.strip()
+                self.window.write_event_value('__RD__', ('LAN', c_lan))
+
+                # 3. SIM: IPs, operador, senal
+                sim1_ip = self.exec_cmd(
+                    "ip addr show mob1s1a1 2>/dev/null"
+                    " | grep 'inet ' | awk '{print $2}' | cut -d/ -f1",
+                    show_cmd=False) or ''
+                sim2_ip = self.exec_cmd(
+                    "ip addr show mob1s2a1 2>/dev/null"
+                    " | grep 'inet ' | awk '{print $2}' | cut -d/ -f1",
+                    show_cmd=False) or ''
+                oper  = self.exec_cmd("gsmctl -a 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                ntype = self.exec_cmd("gsmctl -n 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                band  = self.exec_cmd("gsmctl -b 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                qual  = self.exec_cmd("gsmctl -q 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                imei  = self.exec_cmd("gsmctl -m 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                iccid = self.exec_cmd("gsmctl -J 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                rssi_l = next((l for l in qual.splitlines() if 'RSSI' in l), '-')
+                sinr_l = next((l for l in qual.splitlines() if 'SINR' in l), '')
+                c_sim  = GREEN if (sim1_ip.strip() or sim2_ip.strip()) else AMBER
+                data.update({
+                    'sim1_ip': sim1_ip.strip(), 'sim2_ip': sim2_ip.strip(),
+                    'oper': oper.strip(), 'ntype': ntype.strip(),
+                    'band': band.strip(), 'rssi': rssi_l.strip(),
+                    'sinr': sinr_l.strip(), 'imei': imei.strip(), 'iccid': iccid.strip(),
+                })
+                self.window.write_event_value('__RD__', ('SIM', c_sim))
+
+                # 4. SNMP
+                snmp_st = self.exec_cmd("pgrep snmpd 2>/dev/null || echo ''", show_cmd=False) or ''
+                c_snmp = GREEN if snmp_st.strip() else DIM
+                data['snmp'] = 'Activo (PID: ' + snmp_st.strip()[:6] + ')' if snmp_st.strip() else 'Inactivo'
+                self.window.write_event_value('__RD__', ('SNMP', c_snmp))
+
+                # 5. ZeroTier
+                zt_st = self.exec_cmd("zerotier-cli status 2>/dev/null || echo ''", show_cmd=False) or ''
+                zt_ip = self.exec_cmd(
+                    "ip addr 2>/dev/null | grep -A2 ' zt' | grep 'inet ' "
+                    "| awk '{print $2}' | cut -d/ -f1 | head -1",
+                    show_cmd=False) or '-'
+                c_zt = GREEN if 'ONLINE' in zt_st.upper() else DIM
+                data.update({'zt_status': zt_st.strip()[:30], 'zt_ip': zt_ip.strip()})
+                self.window.write_event_value('__RD__', ('ZT', c_zt))
+
+                # 6. Firewall
+                fw_st = self.exec_cmd(
+                    "uci show firewall 2>/dev/null | grep UPS_SNMP || echo ''",
+                    show_cmd=False) or ''
+                c_fw = GREEN if fw_st.strip() else DIM
+                data['fw'] = 'UPS_SNMP activa' if fw_st.strip() else 'Sin regla UPS_SNMP'
+                self.window.write_event_value('__RD__', ('FW', c_fw))
+
+                # Enviar datos al panel de estado derecho
+                self.window.write_event_value('__STATUS_DATA__', data)
+
+            except Exception:
+                pass
+
+        threading.Thread(target=_check, daemon=True).start()
+
+    def _build_roadmap_col(self):
+        """Arbol interactivo tipo GIT: cada nodo es un boton clickeable que activa su accion."""
+        nodes = [
+            ('SSH',  'CONEXION SSH',  'Conectar al router via SSH'),
+            ('LAN',  'RED  LAN',      'Configurar IP LAN y DHCP'),
+            ('SIM',  '4G  /  SIM',   'Configurar SIM 4G del modem'),
+            ('SNMP', 'SNMPD',         'Configurar servicio SNMP'),
+            ('ZT',   'ZEROTIER VPN',  'Configurar ZeroTier VPN'),
+            ('FW',   'FIREWALL',      'Configurar reglas firewall'),
+        ]
+
+        rows = [
+            [sg.Text('PROGRESO CONFIG',
+                     font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
+                     pad=(8, (10, 18)))],
+        ]
+        for i, (key, label, tooltip) in enumerate(nodes):
+            rows.append([
+                sg.Button(
+                    ' (o) ',
+                    key=f'RD_BTN_{key}',
+                    button_color=(DIM, BG2),
+                    tooltip=tooltip,
+                    border_width=0,
+                    pad=(8, 0),
+                    font=('Consolas', 13, 'bold'),
+                ),
+                sg.Text(
+                    label,
+                    text_color=TEXT,
+                    font=('Segoe UI', 9, 'bold'),
+                    size=(16, 1),
+                    pad=(2, 0),
+                ),
+            ])
+            if i < len(nodes) - 1:
+                rows.append([
+                    sg.Text('     |', font=('Consolas', 11), text_color=BG3, pad=(8, 0)),
+                ])
+
+        rows.append([sg.HorizontalSeparator(color=BG3, pad=(8, (18, 6)))])
+        rows.append([
+            sg.Button(
+                '[>] Refrescar',
+                key='BTN_REFRESH_STATUS',
+                button_color=(DIM, BG2),
+                font=('Segoe UI', 8),
+                pad=(8, 4),
+                border_width=0,
+            )
+        ])
+
+        return sg.Column(
+            rows,
+            background_color=BG2,
+            pad=(0, 0),
+            expand_y=True,
+            vertical_alignment='top',
+        )
+
+    def _build_status_panel(self):
+        """Panel derecho: parametros del modem en tiempo real."""
+        def _row(label, key, val='--'):
+            return [
+                sg.Text(f'{label}:', size=(13, 1),
+                        text_color=DIM, font=('Segoe UI', 8)),
+                sg.Text(val, key=key, text_color=ACCT2,
+                        font=('Consolas', 9, 'bold'), size=(20, 1)),
+            ]
+        def _sec(title):
+            return [sg.Text(title, font=('Segoe UI', 8, 'bold'),
+                            text_color=DIM, pad=(8, (10, 2)))]
+
+        rows = [
+            [sg.Text('ESTADO DEL ROUTER',
+                     font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
+                     pad=(8, (10, 14)))],
+
+            *[_sec('-- RED LAN --------------------')],
+            *[_row('IP LAN',       'ST_LAN_IP')],
+
+            *[_sec('-- SIM / 4G -------------------')],
+            *[_row('SIM 1 IP',     'ST_SIM1_IP')],
+            *[_row('SIM 2 IP',     'ST_SIM2_IP')],
+            *[_row('Operador',     'ST_OPER')],
+            *[_row('Tipo Red',     'ST_NTYPE')],
+            *[_row('Banda LTE',    'ST_BAND')],
+            *[_row('RSSI',         'ST_RSSI')],
+            *[_row('SINR',         'ST_SINR')],
+
+            *[_sec('-- VPN / SNMP -----------------')],
+            *[_row('ZeroTier IP',  'ST_ZT_IP')],
+            *[_row('ZT Estado',    'ST_ZT')],
+            *[_row('SNMP',         'ST_SNMP')],
+            *[_row('Firewall',     'ST_FW')],
+
+            *[_sec('-- MODEM ----------------------')],
+            *[_row('IMEI',         'ST_IMEI')],
+            *[_row('ICCID',        'ST_ICCID')],
+        ]
+
+        return sg.Column(
+            rows,
+            background_color=BG2,
+            pad=(0, 0),
+            expand_y=True,
+            vertical_alignment='top',
+            scrollable=True,
+            vertical_scroll_only=True,
+        )
+
+    # -- SSH -------------------------------------------------------------------
 
     def connect(self, ip: str, user: str, password: str) -> bool:
         try:
@@ -211,7 +416,7 @@ class RUT956ConfigGUI:
             _, stdout, _ = self.ssh.exec_command(cmd)
             result = stdout.read().decode().strip()
             if result and len(result) < 150:
-                self._log(f'â†’ {result}', 'INFO')
+                self._log(f'-> {result}', 'INFO')
             return result
         except Exception as e:
             self._log(f'Error ejecutando comando: {e}', 'ERROR')
@@ -228,7 +433,7 @@ class RUT956ConfigGUI:
         # Loguear tambien para que quede en el historial del log
         self._log(msg, 'INFO')
 
-    # â”€â”€ Configuraciones de Router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Configuraciones de Router ----------------------------------------------
 
 
     # -- Wizard SIM 4G (Dual SIM, checklist en vivo) --------------------------
@@ -265,14 +470,14 @@ class RUT956ConfigGUI:
         # Iconos y colores por estado
         ST = {
             'pending': ('o', DIM),
-            'run':     ('\u27f3', AMBER),
-            'ok':      ('\u2713', GREEN),
-            'warn':    ('\u26a0', '#e8a838'),
-            'err':     ('\u2717', RED),
+            'run':     ('~', AMBER),
+            'ok':      ('V', GREEN),
+            'warn':    ('!', '#e8a838'),
+            'err':     ('X', RED),
             'skip':    ('-', DIM),
         }
         # Secuencia de animacion para pasos activos
-        SPIN = ['\u27f3', '\u21bb', '\u27f2', '\u21ba']
+        SPIN = ['~', '@', '#', '$']
 
         def _sig_bar(rssi_str: str) -> str:
             """Convierte RSSI en barra visual: UUUUU-- -73 dBm (Buena)."""
@@ -288,7 +493,7 @@ class RUT956ConfigGUI:
                     bars, qual = 2, 'Regular'
                 else:
                     bars, qual = 1, 'Debil'
-                bar = '\u2593' * bars + '\u2591' * (6 - bars)
+                bar = '#' * bars + '-' * (6 - bars)
                 return f'{bar}  {val} dBm  ({qual})'
             except Exception:
                 return rssi_str or 'N/A'
@@ -320,7 +525,7 @@ class RUT956ConfigGUI:
         def _sim_col(n: str):
             slot = 'mob1s1a1' if n == '1' else 'mob1s2a1'
             return sg.Column([
-                [sg.Text(f'SIM {n}  \u00b7  {slot}',
+                [sg.Text(f'SIM {n}  .  {slot}',
                          font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
                          pad=(0, (6, 6)))],
                 [sg.Text('APN:', size=(12, 1), text_color=TEXT),
@@ -329,7 +534,7 @@ class RUT956ConfigGUI:
                  sg.InputText('webgprs', key=f'S{n}_USER', size=(24, 1))],
                 [sg.Text('Contrasena:', size=(12, 1), text_color=DIM),
                  sg.InputText('webgprs2002', key=f'S{n}_PASS',
-                              size=(24, 1), password_char='\u25cf')],
+                              size=(24, 1), password_char='*')],
                 [sg.Text('Auth:', size=(12, 1), text_color=TEXT),
                  sg.Combo(['none', 'pap', 'chap'], default_value='none',
                           key=f'S{n}_AUTH', size=(10, 1),
@@ -341,7 +546,7 @@ class RUT956ConfigGUI:
             ], background_color=BG2, pad=(6, 4))
 
         form_layout = [
-            [sg.Text('\U0001f4e1  Configuracion SIM 4G  -  RUT956  (Dual SIM)',
+            [sg.Text('SIM 4G Configuracion - RUT956 (Dual SIM)',
                      font=('Segoe UI', 12, 'bold'), text_color=ACCT2,
                      pad=(0, (10, 4)))],
             [sg.Text('Ambas SIMs se configuraran en paralelo con los datos de tu operador.',
@@ -354,15 +559,15 @@ class RUT956ConfigGUI:
                          text_color=DIM, background_color=BG1,
                          font=('Segoe UI', 9))],
             [sg.Text(
-                '\U0001f4a1  Si una SIM no esta presente el proceso la marcara como N/A '
+                '! Si una SIM no esta presente el proceso la marcara como N/A '
                 'y continuara con la otra.\n'
                 '    Deja usuario/contrasena vacios si tu operador no los requiere.',
                 text_color=DIM, font=('Segoe UI', 8), pad=(0, (2, 8)))],
             [sg.Push(),
-             sg.Button('\u25b6  Iniciar configuracion', key='START', size=(22, 1),
+             sg.Button('> Iniciar configuracion', key='START', size=(22, 1),
                        button_color=(TEXT, '#186840'),
                        font=('Segoe UI', 10, 'bold')),
-             sg.Button('\u2715  Cancelar', key='CANCEL', size=(13, 1),
+             sg.Button('X Cancelar', key='CANCEL', size=(13, 1),
                        button_color=(TEXT, '#4a1010'),
                        font=('Segoe UI', 9, 'bold'))],
         ]
@@ -415,7 +620,7 @@ class RUT956ConfigGUI:
             slot = 'mob1s1a1' if n == '1' else 'mob1s2a1'
             prefix = f'S{n}'
             rows: list = [
-                [sg.Text(f'SIM {n}  \u00b7  {slot}',
+                [sg.Text(f'SIM {n}  .  {slot}',
                          font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
                          pad=(8, (8, 6)))],
                 [sg.HorizontalSeparator(color=BG3, pad=((8, 8), 2))],
@@ -424,7 +629,7 @@ class RUT956ConfigGUI:
                 rows.append(_step_row(prefix, sid, slbl))
             rows += [
                 [sg.HorizontalSeparator(color=BG3, pad=((8, 8), (6, 2)))],
-                [sg.Text('\u23f3  En progreso...',
+                [sg.Text('... En progreso...',
                          key=f'{prefix}_RESULT',
                          text_color=AMBER,
                          font=('Segoe UI', 9, 'bold'),
@@ -434,7 +639,7 @@ class RUT956ConfigGUI:
                              pad=(4, 4), expand_x=True)
 
         prog_layout = [
-            [sg.Text('\U0001f4e1  Configuracion SIM 4G  -  RUT956  (Dual SIM en paralelo)',
+            [sg.Text('SIM 4G Configuracion - RUT956 (Dual SIM en paralelo)',
                      font=('Segoe UI', 12, 'bold'), text_color=ACCT2,
                      pad=(10, (10, 4)))],
             [sg.Text('Configurando SIM1 y SIM2 simultaneamente...',
@@ -452,7 +657,7 @@ class RUT956ConfigGUI:
                           background_color=CLBG, text_color='#7ab8f0',
                           expand_x=True, pad=(8, 2))],
             [sg.Push(),
-             sg.Button('\u2713  Cerrar', key='CLOSE', size=(14, 1),
+             sg.Button('V Cerrar', key='CLOSE', size=(14, 1),
                        button_color=(TEXT, '#186840'),
                        font=('Segoe UI', 10, 'bold'),
                        disabled=True, pad=(8, 6))],
@@ -530,14 +735,14 @@ class RUT956ConfigGUI:
                 for sid, _ in STEPS[1:]:
                     upd(sid, 'skip', 'N/A - SIM no presente')
                 finish('err',
-                       f'\u2717  SIM {sim_n}: no insertada\n'
+                       f'X  SIM {sim_n}: no insertada\n'
                        'Verifica el contacto fisico de la SIM en el router.')
                 if is_primary:
                     restart_event.set()
                 return
 
             upd('diag', 'ok',
-                f'SIM {sim_n} detectada  \u00b7  {sim_st.strip()}',
+                f'SIM {sim_n} detectada  .  {sim_st.strip()}',
                 f'ICCID:{iccid.strip()}  IMEI:{imei.strip()}')
 
             # -- PASO CLEAN: Limpiar interfaces residuales --------------------
@@ -576,7 +781,7 @@ class RUT956ConfigGUI:
                 upd('uci', 'warn', 'UCI aplicado con advertencias', out[:80])
             else:
                 upd('uci', 'ok',
-                    f'UCI OK  \u00b7  {slot}  APN={apn}  auto_apn=1')
+                    f'UCI OK  .  {slot}  APN={apn}  auto_apn=1')
 
             # -- PASO Firewall ------------------------------------------------
             upd('fw', 'run', 'Verificando zona WAN...')
@@ -596,7 +801,7 @@ class RUT956ConfigGUI:
             if is_primary:
                 upd('restart', 'run', 'Reiniciando servicio de red...')
                 self.exec_cmd('/etc/init.d/network restart', show_cmd=False)
-                upd('restart', 'ok', 'Red reiniciada  \u00b7  esperando 5 s...')
+                upd('restart', 'ok', 'Red reiniciada  .  esperando 5 s...')
                 _time.sleep(5)
                 restart_event.set()
             else:
@@ -663,7 +868,7 @@ class RUT956ConfigGUI:
 
                 if has_signal or ok_oper or ok_ip:
                     upd(rid, 'ok',
-                        f'{rnd_lbl}  \u2713 CONECTADO', detail)
+                        f'{rnd_lbl}  V CONECTADO', detail)
                     connected = True
                     for skip_id in round_ids[rnd_i + 1:]:
                         upd(skip_id, 'skip', '(no necesario)')
@@ -707,9 +912,9 @@ class RUT956ConfigGUI:
 
             if connected:
                 upd('final', 'ok',
-                    '\u2713 Conectado a red celular', detail)
+                    'V Conectado a red celular', detail)
                 finish('ok',
-                       f'\u2713  SIM {sim_n} CONECTADA\n'
+                       f'V  SIM {sim_n} CONECTADA\n'
                        f'Operador: {s.get("oper","?")}  '
                        f'Red: {s.get("ntype","?")}  Banda: {band}\n'
                        f'Senal: {sig_bar}\n'
@@ -719,7 +924,7 @@ class RUT956ConfigGUI:
                 upd('final', 'warn',
                     'SIM presente - sin datos aun', detail)
                 finish('warn',
-                       f'\u26a0  SIM {sim_n}: insertada, sin conexion\n'
+                       f'!  SIM {sim_n}: insertada, sin conexion\n'
                        f'APN: {apn}  Banda: {band}\n'
                        f'Senal: {sig_bar}\n'
                        'Verifica APN en WebUI y plan de datos')
@@ -727,7 +932,7 @@ class RUT956ConfigGUI:
                 upd('final', 'err',
                     'Sin respuesta del modem', detail)
                 finish('err',
-                       f'\u2717  SIM {sim_n}: sin respuesta\n'
+                       f'X  SIM {sim_n}: sin respuesta\n'
                        f'Estado: {s.get("sim","?")}  '
                        'Verifica fisicamente la SIM y antena')
 
@@ -779,31 +984,73 @@ class RUT956ConfigGUI:
             elif ev2 == '__DONE__':
                 if va2['__DONE__'] >= 2:
                     prog_win['PROG_SUB'].update(
-                        '\u2713  Configuracion completada para ambas SIMs')
+                        'V  Configuracion completada para ambas SIMs')
                     prog_win['CLOSE'].update(disabled=False)
                     self._set_status(
-                        '\U0001f4e1 SIM 4G - Configuracion dual completa. '
+                        'SIM 4G - Configuracion dual completa. '
                         'Revisa resultados en la ventana.', GREEN)
 
         prog_win.close()
 
-    def configure_lan(self):
+    def _lan_wizard(self) -> None:
+        """Wizard interactivo para configuracion LAN y DHCP."""
         if not self.connected:
             self._log('No conectado al router', 'ERROR'); return
-        self._log('=== CONFIGURANDO LAN ===')
-        self._set_progress(50, 'LAN: Configurando IP')
-        ip_lan = '192.168.10.1'
-        cmd = (
-            f"uci set network.lan.ipaddr='{ip_lan}'\n"
-            "uci set network.lan.netmask='255.255.255.0'\n"
-            "uci set dhcp.lan.start='100'\n"
-            "uci set dhcp.lan.limit='100'\n"
-            "uci commit network\nuci commit dhcp\n"
-            "/etc/init.d/network restart"
-        )
-        self.exec_cmd(cmd)
-        self._log(f'LAN configurada: {ip_lan}', 'OK')
-        self._set_progress(60, 'LAN: Completado âœ“')
+
+        layout = [
+            [sg.Text('(NET) Configuracion de Red Local (LAN)', 
+                     font=('Segoe UI', 12, 'bold'), text_color=ACCT2, pad=(0, (10, 5)))],
+            [sg.Text('Define la direccion IP del router y el rango DHCP.', text_color=DIM, font=('Segoe UI', 8))],
+            [sg.HorizontalSeparator(color=BG3, pad=(0, 10))],
+            
+            [sg.Text('IP LAN Router:', size=(15, 1)),
+             sg.InputText('192.168.10.1', key='LAN_IP', size=(20, 1))],
+            [sg.Text('Mascara Subred:', size=(15, 1)),
+             sg.InputText('255.255.255.0', key='LAN_MASK', size=(20, 1))],
+            
+            [sg.Text('DHCP Inicio:', size=(15, 1), text_color=DIM),
+             sg.InputText('100', key='DHCP_START', size=(10, 1))],
+            [sg.Text('DHCP Limite:', size=(15, 1), text_color=DIM),
+             sg.InputText('100', key='DHCP_LIMIT', size=(10, 1))],
+            
+            [sg.HorizontalSeparator(color=BG3, pad=(0, 10))],
+            [sg.Text('[!] Nota: Al cambiar la IP la red se reiniciara.', text_color=AMBER, font=('Segoe UI', 8))],
+            [sg.Push(), 
+             sg.Button('[>] Aplicar LAN', key='SAVE_LAN', button_color=(TEXT, '#186840'), font=('Segoe UI', 9, 'bold')),
+             sg.Button('[X] Cancelar', key='CANCEL', button_color=(TEXT, '#4a1010'))]
+        ]
+        
+        win = sg.Window('Configuracion LAN', layout, modal=True, background_color=BG1, keep_on_top=True)
+        ev, va = win.read()
+        if ev == 'SAVE_LAN':
+            ip_lan = va['LAN_IP'].strip()
+            mask   = va['LAN_MASK'].strip()
+            start  = va['DHCP_START'].strip()
+            limit  = va['DHCP_LIMIT'].strip()
+            win.close()
+            
+            def worker():
+                self._log(f'=== CONFIGURANDO LAN -> {ip_lan} ===')
+                self._set_progress(20, 'Escribiendo UCI LAN')
+                cmd = (
+                    f"uci set network.lan.ipaddr='{ip_lan}'\n"
+                    f"uci set network.lan.netmask='{mask}'\n"
+                    f"uci set dhcp.lan.start='{start}'\n"
+                    f"uci set dhcp.lan.limit='{limit}'\n"
+                    "uci commit network\nuci commit dhcp\n"
+                    "/etc/init.d/network restart &"
+                )
+                self.exec_cmd(cmd)
+                self._log(f'LAN configurada: {ip_lan}. Reiniciando red...', 'OK')
+                self._set_progress(100, 'Completado [OK]')
+                self._set_status(f'LAN CAMBIADA A {ip_lan} - Reconectate si perdiste acceso.', AMBER)
+                # Actualizar roadmap tras un momento
+                import time; time.sleep(5)
+                self._update_roadmap()
+                
+            threading.Thread(target=worker, daemon=True).start()
+        else:
+            win.close()
 
     def configure_snmp(self):
         if not self.connected:
@@ -826,7 +1073,8 @@ class RUT956ConfigGUI:
         )
         self.exec_cmd(cmd)
         self._log('SNMP configurado (puerto 161, community: public)', 'OK')
-        self._set_progress(75, 'SNMP: Completado âœ“')
+        self._set_progress(75, 'SNMP: Completado [OK]')
+        self._update_roadmap()
 
     def configure_zerotier(self, network_id: str):
         if not self.connected:
@@ -845,7 +1093,8 @@ class RUT956ConfigGUI:
         self._log('Esperando autorizacion ZeroTier (5 s)...', 'WAIT')
         self.exec_cmd('sleep 5')
         self._log(f'ZeroTier configurado (Network: {network_id[:8]}...)', 'OK')
-        self._set_progress(85, 'ZeroTier: Completado âœ“')
+        self._set_progress(85, 'ZeroTier: Completado [OK]')
+        self._update_roadmap()
 
     def configure_firewall(self):
         if not self.connected:
@@ -866,17 +1115,18 @@ class RUT956ConfigGUI:
             "/etc/init.d/firewall restart > /dev/null 2>&1 || true"
         )
         self.exec_cmd(cmd)
-        self._log('Firewall configurado (161 â†’ 192.168.10.198:161)', 'OK')
-        self._set_progress(95, 'Firewall: Completado âœ“')
-        self._set_status('Firewall configurado â€” port forward 161 â†’ 192.168.10.198:161', GREEN)
+        self._log('Firewall configurado (161 -> 192.168.10.198:161)', 'OK')
+        self._set_progress(95, 'Firewall: Completado [OK]')
+        self._set_status('Firewall configurado - port forward 161 -> 192.168.10.198:161', GREEN)
+        self._update_roadmap()
 
-    # â”€â”€ Cambiar IP del router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Cambiar IP del router --------------------------------------------------
 
     def change_ip(self, new_ip: str, new_mask: str, new_gw: str) -> None:
         """Cambia la IP LAN del router via SSH."""
         if not self.connected:
             self._log('No conectado al router', 'ERROR')
-            self._set_status('Cambio de IP cancelado â€” no hay conexion SSH activa', RED)
+            self._set_status('Cambio de IP cancelado - no hay conexion SSH activa', RED)
             return
 
         # Validar formato basico IP
@@ -885,11 +1135,11 @@ class RUT956ConfigGUI:
         )
         if not ip_re.match(new_ip):
             self._log(f'IP invalida: {new_ip}', 'ERROR')
-            self._set_status(f'IP invalida: "{new_ip}" â€” usa formato X.X.X.X', RED)
+            self._set_status(f'IP invalida: "{new_ip}" - usa formato X.X.X.X', RED)
             return
 
-        self._set_status(f'Cambio de IP â€” aplicando nueva direccion {new_ip}...', ACCT2)
-        self._log(f'=== CAMBIANDO IP DEL ROUTER â†’ {new_ip} ===')
+        self._set_status(f'Cambio de IP - aplicando nueva direccion {new_ip}...', ACCT2)
+        self._log(f'=== CAMBIANDO IP DEL ROUTER -> {new_ip} ===')
         self._set_progress(10, 'Cambio IP: escribiendo UCI')
 
         cmd = (
@@ -900,17 +1150,17 @@ class RUT956ConfigGUI:
             cmd += f"uci set network.lan.gateway='{new_gw}'\n"
         cmd += "uci commit network"
 
-        self._set_status(f'Cambio de IP [1/2] â€” Guardando nueva IP {new_ip} en UCI...', ACCT2)
+        self._set_status(f'Cambio de IP [1/2] - Guardando nueva IP {new_ip} en UCI...', ACCT2)
         self._set_progress(40, f'Cambio IP: guardando {new_ip}')
         self.exec_cmd(cmd)
 
         self._set_status(
-            f'Cambio de IP [2/2] â€” Reiniciando red... âš  La conexion SSH se perdera.  '
+            f'Cambio de IP [2/2] - Reiniciando red... ! La conexion SSH se perdera.  '
             f'Reconectate usando la nueva IP: {new_ip}', AMBER
         )
         self._set_progress(70, 'Cambio IP: reiniciando red')
         self._log(
-            f'âš  Reiniciando red â€” la sesion SSH se cerrara.  '
+            f'! Reiniciando red - la sesion SSH se cerrara.  '
             f'Usa la nueva IP {new_ip} para reconectarte.', 'WAIT'
         )
 
@@ -929,15 +1179,16 @@ class RUT956ConfigGUI:
         self.config['router_ip'] = new_ip
         self._save_config()
 
-        self._set_progress(100, f'IP cambiada a {new_ip} âœ“')
+        self._set_progress(100, f'IP cambiada a {new_ip} [OK]')
         self._set_status(
-            f'âœ“ IP cambiada a {new_ip}  |  Reconectate con esa IP en el campo superior', GREEN
+            f'[OK] IP cambiada a {new_ip}  |  Reconectate con esa IP en el campo superior', GREEN
         )
         self._log(f'IP cambiada a {new_ip}. Recuerda reconectarte.', 'OK')
 
         # Actualizar campo IP en la ventana (thread-safe via evento)
         if self.window:
             self.window.write_event_value('UPDATE_IP_FIELD', new_ip)
+        self._update_roadmap()
 
     def validate_all(self):
         if not self.connected:
@@ -962,96 +1213,156 @@ class RUT956ConfigGUI:
         else:
             self._log('SNMP: No esta activo', 'ERROR')
 
-        self._set_progress(100, 'âœ“ Validaciones completadas')
+        self._set_progress(100, '[OK] Validaciones completadas')
         self._log('TODAS LAS CONFIGURACIONES COMPLETADAS', 'OK')
+        self._update_roadmap()
 
-    # â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Layout ----------------------------------------------------------------
 
     def _build_layout(self) -> list:
 
-        # â”€â”€ Tab 1: Configuracion Router â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        btn_cfg  = dict(font=('Segoe UI', 9, 'bold'), pad=(4, 4))
-        btn_blue = dict(button_color=(TEXT, '#16408a'), **btn_cfg)
+        btn_cfg = dict(font=('Segoe UI', 9, 'bold'), pad=(4, 4))
 
-        tab_router = [
-            [sg.Text('Conexion SSH al Router',
-                     font=('Segoe UI', 11, 'bold'), text_color=ACCT2, pad=(0, (10, 6)))],
+        # =====================================================================
+        # COLUMNA IZQUIERDA: Arbol interactivo de progreso
+        # =====================================================================
+        left_col = sg.Column(
+            [[self._build_roadmap_col()]],
+            background_color=BG2,
+            pad=(0, 0),
+            expand_y=True,
+            vertical_alignment='top',
+        )
 
-            [sg.Text('IP Router:',  size=(12, 1), text_color=DIM),
+        # =====================================================================
+        # COLUMNA CENTRAL: Conexion SSH + LOG completo expandible
+        # =====================================================================
+        center_content = [
+            [sg.Text('CONEXION SSH',
+                     font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
+                     pad=(0, (8, 6)))],
+            [sg.Text('IP Router:', size=(10, 1), text_color=DIM,
+                     font=('Segoe UI', 9)),
              sg.InputText(self.config.get('router_ip', '192.168.1.1'),
-                          key='IP', size=(20, 1)),
-             sg.Text('Usuario:', size=(9, 1), text_color=DIM),
+                          key='IP', size=(18, 1), font=('Consolas', 9)),
+             sg.Text('Usuario:', size=(8, 1), text_color=DIM,
+                     font=('Segoe UI', 9)),
              sg.InputText(self.config.get('username', 'admin'),
-                          key='USER', size=(16, 1))],
+                          key='USER', size=(14, 1), font=('Consolas', 9)),
+             sg.Text('Pass:', size=(5, 1), text_color=DIM,
+                     font=('Segoe UI', 9)),
+             sg.InputText('', key='PASS', password_char='*',
+                          size=(14, 1), font=('Consolas', 9)),
+             sg.Button('CONECTAR', key='BTN_CONNECT',
+                       button_color=(TEXT, ACCENT),
+                       font=('Segoe UI', 9, 'bold'), pad=(6, 4))],
 
-            [sg.Text('Contrasena:', size=(12, 1), text_color=DIM),
-             sg.InputText('', key='PASS', password_char='â—', size=(20, 1)),
-             sg.Button('âš¡ Conectar', key='BTN_CONNECT', size=(13, 1),
-                       button_color=(TEXT, ACCENT), **btn_cfg)],
+            [sg.Text('( ) Desconectado', key='STATUS',
+                     text_color=RED, font=('Segoe UI', 9, 'bold'),
+                     pad=(2, (4, 6))),
+             sg.Push(),
+             sg.Button('Cambiar IP', key='BTN_CHANGE_IP',
+                       button_color=(TEXT, '#2a5080'),
+                       font=('Segoe UI', 8), pad=(4, 4)),
+             sg.Button('[OK] Validar Todo', key='BTN_VAL',
+                       button_color=(TEXT, '#186840'),
+                       font=('Segoe UI', 8, 'bold'), pad=(4, 4))],
 
-            [sg.Text('â— Desconectado', key='STATUS', text_color=RED,
-                     font=('Segoe UI', 9, 'bold'), pad=(2, 6))],
+            [sg.HorizontalSeparator(color=BG3, pad=(0, (4, 8)))],
 
-            [sg.HorizontalSeparator(color=BG3, pad=(0, 4))],
-
-            [sg.Text('Configuracion del Router',
-                     font=('Segoe UI', 9, 'bold'), text_color=DIM, pad=(0, 4))],
-
-            # Fila 1: acciones de red
-            [sg.Button('ðŸ“¡ SIM 4G',   key='BTN_SIM',  size=(11, 1), **btn_blue),
-             sg.Button('ðŸŒ LAN',      key='BTN_LAN',  size=(11, 1), **btn_blue),
-             sg.Button('ðŸ“Š SNMP',     key='BTN_SNMP', size=(11, 1), **btn_blue),
-             sg.Button('ðŸ”— ZeroTier', key='BTN_ZT',   size=(11, 1), **btn_blue),
-             sg.Button('ðŸ”¥ Firewall', key='BTN_FW',   size=(11, 1), **btn_blue),
-             sg.Button('âœ… Validar',  key='BTN_VAL',  size=(11, 1),
-                       button_color=(TEXT, '#186840'), **btn_cfg)],
-
-            # Fila 2: cambio de IP
-            [sg.Button('ðŸ”„ Cambiar IP Router', key='BTN_CHANGE_IP', size=(20, 1),
-                       button_color=(TEXT, '#2a5080'), **btn_cfg),
-             sg.Text('Cambia la IP LAN del router y reconectate con la nueva direccion.',
-                     text_color=DIM, font=('Segoe UI', 8))],
-
-            [sg.HorizontalSeparator(color=BG3, pad=(0, 6))],
-
-            [sg.Text('ðŸ“‹ Log en tiempo real',
-                     font=('Segoe UI', 9, 'bold'), text_color=DIM)],
-
+            # LOG COMPLETO: expand_y=True para que llene todo el espacio
+            [sg.Text('LOG EN VIVO',
+                     font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
+                     pad=(0, (0, 4)))],
             [sg.Multiline(
-                size=(90, 13), key='OUTPUT', disabled=True,
-                font=('Consolas', 9), text_color='#7ab8f0',
+                '',
+                key='OUTPUT',
+                disabled=True,
+                autoscroll=True,
+                font=('Consolas', 9),
+                text_color='#7ab8f0',
                 background_color=CLBG,
-                expand_x=True, expand_y=True,
+                expand_x=True,
+                expand_y=True,
+                no_scrollbar=False,
+                pad=(0, 0),
             )],
 
-            [sg.Text('Progreso:', text_color=DIM, size=(9, 1)),
-             sg.ProgressBar(100, size=(55, 14), key='PROGRESS',
+            [sg.Text('Progreso:', text_color=DIM, size=(9, 1),
+                     font=('Segoe UI', 8)),
+             sg.ProgressBar(100, size=(1, 14), key='PROGRESS',
                             bar_color=(ACCT2, BG2), expand_x=True),
-             sg.Text('', key='PROGRESS_TEXT', size=(26, 1),
-                     text_color=DIM, font=('Segoe UI', 8))],
+             sg.Text('', key='PROGRESS_TEXT',
+                     text_color=DIM, font=('Segoe UI', 8),
+                     size=(28, 1))],
+
+            # Botones de accion (redundantes del arbol, utiles por si acaso)
+            [sg.HorizontalSeparator(color=BG3, pad=(0, (6, 4)))],
+            [sg.Button('(SIM) SIM 4G',   key='BTN_SIM',  size=(11, 1),
+                       button_color=(TEXT, '#16408a'), **btn_cfg),
+             sg.Button('(NET) LAN',      key='BTN_LAN',  size=(11, 1),
+                       button_color=(TEXT, '#16408a'), **btn_cfg),
+             sg.Button('(STATS) SNMP',   key='BTN_SNMP', size=(11, 1),
+                       button_color=(TEXT, '#16408a'), **btn_cfg),
+             sg.Button('(LINK) ZeroTier',key='BTN_ZT',   size=(11, 1),
+                       button_color=(TEXT, '#16408a'), **btn_cfg),
+             sg.Button('(FW) Firewall',  key='BTN_FW',   size=(11, 1),
+                       button_color=(TEXT, '#16408a'), **btn_cfg)],
         ]
 
-        # â”€â”€ Tab 2: Dispositivos en Red â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        center_col = sg.Column(
+            center_content,
+            background_color=BG1,
+            pad=(12, 6),
+            expand_x=True,
+            expand_y=True,
+            vertical_alignment='top',
+        )
+
+        # =====================================================================
+        # COLUMNA DERECHA: Estado del modem en tiempo real
+        # =====================================================================
+        right_col = sg.Column(
+            [[self._build_status_panel()]],
+            background_color=BG2,
+            pad=(0, 0),
+            expand_y=True,
+            vertical_alignment='top',
+        )
+
+        # Tab 1: 3 columnas sin costuras
+        tab_router = [
+            [left_col,
+             sg.VSep(color=BG3, pad=(0, 0)),
+             center_col,
+             sg.VSep(color=BG3, pad=(0, 0)),
+             right_col]
+        ]
+
+        # =====================================================================
+        # TAB 2: Dispositivos en red (tabla ocupa todo el espacio)
+        # =====================================================================
         tab_devices = [
-            [sg.Text('Dispositivos Ethernet en la Red Local',
-                     font=('Segoe UI', 11, 'bold'), text_color=ACCT2, pad=(0, (10, 4))),
+            [sg.Text('Dispositivos en la Red Local',
+                     font=('Segoe UI', 11, 'bold'), text_color=ACCT2,
+                     pad=(0, (10, 4))),
              sg.Push(),
-             sg.Button('ðŸ” Escanear Red',    key='BTN_SCAN',    size=(16, 1),
+             sg.Button('Escanear Red',    key='BTN_SCAN',
                        button_color=(TEXT, ACCENT), **btn_cfg),
-             sg.Button('ðŸŒ Abrir en Browser', key='BTN_BROWSER', size=(18, 1),
+             sg.Button('Abrir en Browser', key='BTN_BROWSER',
                        button_color=(TEXT, '#186840'), **btn_cfg),
-             sg.Button('ðŸ—‘ Limpiar',          key='BTN_CLR_DEV', size=(10, 1),
+             sg.Button('Limpiar', key='BTN_CLR_DEV',
                        button_color=(TEXT, '#4a1010'), **btn_cfg)],
 
             [sg.Text(
-                'Lee la tabla ARP y hace ping a cada dispositivo para verificar su estado. '
-                'Selecciona una fila y haz clic en "Abrir en Browser" para ir a su panel web.',
+                'Lee la tabla ARP y hace ping a cada dispositivo. '
+                'Selecciona una fila y haz clic en "Abrir en Browser" para su panel web.',
                 text_color=DIM, font=('Segoe UI', 9), pad=(2, (0, 8)))],
 
             [sg.Table(
                 values=[],
                 headings=['  IP Address', '  MAC Address', '  Hostname', '  Tipo', '  Estado'],
-                col_widths=[16, 22, 30, 11, 10],
+                col_widths=[16, 22, 34, 11, 10],
                 auto_size_columns=False,
                 display_row_numbers=False,
                 justification='left',
@@ -1067,105 +1378,109 @@ class RUT956ConfigGUI:
                 enable_events=True,
                 expand_x=True,
                 expand_y=True,
-                row_height=26,
-                num_rows=18,
+                row_height=28,
+                num_rows=26,
             )],
 
             [sg.Text('', key='DEV_STATUS', text_color=DIM,
                      font=('Segoe UI', 9), expand_x=True),
              sg.Text('Seleccionado:', text_color=DIM, font=('Segoe UI', 9)),
-             sg.Text('â€”', key='SEL_IP', text_color=ACCT2,
+             sg.Text('-', key='SEL_IP', text_color=ACCT2,
                      font=('Segoe UI', 9, 'bold'), size=(18, 1))],
         ]
 
-        # â”€â”€ Layout raiz â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # =====================================================================
+        # LAYOUT RAIZ
+        # =====================================================================
         layout = [
-            # Header bar
-            [sg.Text('âš™', font=('Segoe UI', 20), text_color=ACCT2, pad=((10, 4), 8)),
-             sg.Text('RUT956  CONFIGURATOR',
-                     font=('Segoe UI', 15, 'bold'), text_color=TEXT),
-             sg.Text('v2.0', font=('Segoe UI', 9), text_color=DIM, pad=((4, 0), 0)),
+            [sg.Text('RUT956', font=('Segoe UI', 18, 'bold'),
+                     text_color=ACCT2, pad=((14, 4), (8, 6))),
+             sg.Text('CONFIGURATOR  v2.0',
+                     font=('Segoe UI', 13, 'bold'), text_color=TEXT,
+                     pad=((0, 0), (10, 6))),
              sg.Push(),
-             sg.Button('âœ•  Salir', key='BTN_EXIT', size=(10, 1),
+             sg.Text('', key='HDR_IP', text_color=DIM,
+                     font=('Consolas', 9), pad=((0, 10), 0)),
+             sg.Button('X  Salir', key='BTN_EXIT',
                        button_color=(TEXT, '#4a1010'),
                        font=('Segoe UI', 9, 'bold'), pad=(12, 8))],
 
             [sg.HorizontalSeparator(color=ACCENT, pad=(0, 0))],
 
             [sg.TabGroup(
-                [[sg.Tab('  ðŸ”§ Configuracion Router  ', tab_router,
+                [[sg.Tab('  Configuracion Router  ', tab_router,
                          background_color=BG1),
-                  sg.Tab('  ðŸ“¡ Dispositivos en Red   ', tab_devices,
+                  sg.Tab('  Dispositivos en Red  ', tab_devices,
                          background_color=BG1)]],
                 tab_background_color=BG2,
                 selected_background_color=BG1,
                 selected_title_color=ACCT2,
                 title_color=DIM,
                 background_color=BG1,
+                font=('Segoe UI', 9, 'bold'),
                 expand_x=True, expand_y=True,
                 key='TABS',
             )],
 
-            # â”€â”€ Barra de estado global (footer) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             [sg.HorizontalSeparator(color=BG3, pad=(0, 0))],
-            [sg.Text('â—', key='STATUS_DOT', text_color=DIM,
+            [sg.Text('( )', key='STATUS_DOT', text_color=DIM,
                      font=('Segoe UI', 9), pad=((10, 4), 4)),
-             sg.Text('Listo', key='STATUS_BAR', text_color=DIM,
-                     font=('Segoe UI', 9), expand_x=True,
-                     relief='flat'),
-             sg.Text(
-                 datetime.now().strftime('%H:%M'),
-                 key='STATUS_TIME', text_color=DIM,
-                 font=('Segoe UI', 8), pad=((0, 10), 4)
-             )],
+             sg.Text('Listo para conectar',
+                     key='STATUS_BAR', text_color=DIM,
+                     font=('Segoe UI', 9), expand_x=True),
+             sg.Text(datetime.now().strftime('%H:%M'),
+                     key='STATUS_TIME', text_color=DIM,
+                     font=('Segoe UI', 8), pad=((0, 14), 4))],
         ]
         return layout
 
-    # â”€â”€ Ventana â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Ventana ---------------------------------------------------------------
 
     def create_window(self) -> sg.Window:
-        try:
-            import tkinter as tk
-            r = tk.Tk(); r.withdraw()
-            sw, sh = r.winfo_screenwidth(), r.winfo_screenheight()
-            r.destroy()
-            ww = min(1100, sw - 60)
-            wh = min(800,  sh - 80)
-        except Exception:
-            ww, wh = 1050, 760
-
         window = sg.Window(
             'RUT956 Configurator v2.0',
             self._build_layout(),
             finalize=True,
-            size=(ww, wh),
             resizable=True,
-            location=(None, None),
+            location=(0, 0),
             background_color=BG1,
         )
 
-        # Ajuste extra del widget de log
+        # Pantalla completa al abrir
         try:
-            window['OUTPUT'].Widget.config(
+            window.maximize()
+        except Exception:
+            try:
+                window.TKroot.state('zoomed')   # Windows
+            except Exception:
+                pass
+
+        # Ajuste del widget de log (colores y bordes)
+        try:
+            widget = window['OUTPUT'].Widget
+            widget.config(
                 fg='#7ab8f0', bg=CLBG,
                 insertbackground='#7ab8f0',
                 relief='flat', bd=0,
+                selectbackground=ACCENT,
+                selectforeground=TEXT,
             )
         except Exception:
             pass
 
         return window
 
-    # â”€â”€ Bucle de eventos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # -- Bucle de eventos ------------------------------------------------------
 
     def run(self) -> None:
         self.window = self.create_window()
         self._log('RUT956 CONFIGURATOR v2.0 iniciado', 'OK')
         self._log('Configura la conexion SSH en la pestana "Configuracion Router"', 'INFO')
         self._log('Usa la pestana "Dispositivos en Red" para escanear tu red local', 'INFO')
+        self._log('Haz clic en un nodo del arbol para activar esa configuracion', 'INFO')
 
         while True:
-            # Refrescar log
+            # Refrescar log (texto completo, autoscroll al final)
             self.window['OUTPUT'].update('\n'.join(self.log_lines))
             try:
                 self.window['OUTPUT'].Widget.see('end')
@@ -1185,12 +1500,12 @@ class RUT956ConfigGUI:
 
             event, values = self.window.read(timeout=200)
 
-            # â”€â”€ Salir â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- Salir ---------------------------------------------------------
             if event in (sg.WINDOW_CLOSED, 'BTN_EXIT'):
                 break
 
-            # â”€â”€ SSH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-            elif event == 'BTN_CONNECT':
+            # -- SSH -----------------------------------------------------------
+            elif event in ('BTN_CONNECT', 'RD_BTN_SSH'):
                 ip  = values['IP'].strip()
                 usr = values['USER'].strip()
                 pwd = values['PASS'].strip()
@@ -1198,34 +1513,86 @@ class RUT956ConfigGUI:
                     self._log('Completa todos los campos de conexion', 'ERROR')
                     continue
                 if self.connect(ip, usr, pwd):
-                    self.window['STATUS'].update(f'â— Conectado a {ip}', text_color=GREEN)
+                    self.window['STATUS'].update(f'(o) Conectado a {ip}', text_color=GREEN)
+                    try:
+                        self.window['HDR_IP'].update(f'Router: {ip}')
+                    except Exception:
+                        pass
+                    self._update_roadmap()
                 else:
-                    self.window['STATUS'].update('â— Error de conexion', text_color=RED)
+                    self.window['STATUS'].update('(X) Error de conexion', text_color=RED)
 
-            elif event == 'BTN_SIM':
-                # El wizard gestiona sus propios threads internamente;
-                # se llama directamente en el hilo de UI para poder
-                # abrir ventanas modales con event loops propios.
+            elif event in ('BTN_SIM', 'RD_BTN_SIM'):
                 self._sim_wizard()
+                self._update_roadmap()
 
-            elif event == 'BTN_LAN':
+            elif event in ('BTN_LAN', 'RD_BTN_LAN'):
+                self._lan_wizard()
+                self._update_roadmap()
 
-                threading.Thread(target=self.configure_lan,     daemon=True).start()
-            elif event == 'BTN_SNMP':
-                threading.Thread(target=self.configure_snmp,    daemon=True).start()
-            elif event == 'BTN_FW':
+            elif event in ('BTN_SNMP', 'RD_BTN_SNMP'):
+                threading.Thread(target=self.configure_snmp, daemon=True).start()
+
+            elif event in ('BTN_FW', 'RD_BTN_FW'):
                 threading.Thread(target=self.configure_firewall, daemon=True).start()
+
             elif event == 'BTN_VAL':
-                threading.Thread(target=self.validate_all,      daemon=True).start()
-            elif event == 'BTN_ZT':
+                threading.Thread(target=self.validate_all, daemon=True).start()
+
+            elif event in ('BTN_ZT', 'RD_BTN_ZT'):
                 nid = sg.popup_get_text(
                     'Ingresa el Network ID de ZeroTier\n(exactamente 16 caracteres):',
-                    title='ZeroTier â€” Network ID',
+                    title='ZeroTier -- Network ID',
                     background_color=BG2, text_color=TEXT,
                 )
                 if nid:
                     threading.Thread(target=self.configure_zerotier,
                                      args=(nid,), daemon=True).start()
+
+            # -- Roadmap: estado de nodos (hilo de fondo) ----------------------
+            elif event == '__RD__':
+                key, color = values[event]
+                # Colorear el boton del nodo segun el estado
+                node_color_map = {
+                    GREEN: (GREEN,  '#0d2a1e'),
+                    AMBER: (AMBER,  '#2a1f0d'),
+                    RED:   (RED,    '#2a0d0d'),
+                    DIM:   (DIM,    BG2),
+                }
+                fg, bg = node_color_map.get(color, (DIM, BG2))
+                try:
+                    self.window[f'RD_BTN_{key}'].update(button_color=(fg, bg))
+                except Exception:
+                    pass
+
+            # -- Panel estado: datos en vivo del modem -------------------------
+            elif event == '__STATUS_DATA__':
+                d = values[event]
+                map_fields = {
+                    'ST_LAN_IP':  d.get('lan_ip',  '--'),
+                    'ST_SIM1_IP': d.get('sim1_ip', '--'),
+                    'ST_SIM2_IP': d.get('sim2_ip', '--'),
+                    'ST_OPER':    d.get('oper',    '--'),
+                    'ST_NTYPE':   d.get('ntype',   '--'),
+                    'ST_BAND':    d.get('band',    '--'),
+                    'ST_RSSI':    d.get('rssi',    '--'),
+                    'ST_SINR':    d.get('sinr',    '--'),
+                    'ST_ZT_IP':   d.get('zt_ip',   '--'),
+                    'ST_ZT':      d.get('zt_status','--'),
+                    'ST_SNMP':    d.get('snmp',    '--'),
+                    'ST_FW':      d.get('fw',      '--'),
+                    'ST_IMEI':    (d.get('imei',   '--') or '--')[:18],
+                    'ST_ICCID':   (d.get('iccid',  '--') or '--')[:18],
+                }
+                for k, v in map_fields.items():
+                    try:
+                        self.window[k].update(v or '--')
+                    except Exception:
+                        pass
+
+            # -- Refrescar estado (boton o evento) -----------------------------
+            elif event in ('BTN_REFRESH_STATUS',):
+                self._update_roadmap()
 
             elif event == 'BTN_CHANGE_IP':
                 # Popup de cambio de IP con tres campos
@@ -1233,7 +1600,7 @@ class RUT956ConfigGUI:
                     [sg.Text('Nueva IP del Router (LAN)',
                              font=('Segoe UI', 10, 'bold'), text_color=ACCT2)],
                     [sg.Text('IP actual:', size=(14, 1), text_color=DIM),
-                     sg.Text(self.config.get('router_ip', 'â€”'),
+                     sg.Text(self.config.get('router_ip', '-'),
                              text_color=AMBER, font=('Consolas', 10))],
                     [sg.HorizontalSeparator(color=BG3)],
                     [sg.Text('Nueva IP:', size=(14, 1), text_color=TEXT),
@@ -1244,13 +1611,13 @@ class RUT956ConfigGUI:
                      sg.InputText('', key='NEW_GW', size=(20, 1))],
                     [sg.HorizontalSeparator(color=BG3)],
                     [sg.Text(
-                        'âš  La sesion SSH se cerrara al aplicar el cambio.\n'
-                        '   Reconectate usando la nueva IP.',
+                        '[!] La sesion SSH se cerrara al aplicar el cambio.\n'
+                        '    Reconectate usando la nueva IP.',
                         text_color=AMBER, font=('Segoe UI', 8))],
                     [sg.Push(),
-                     sg.Button('âœ“ Aplicar', key='APPLY', size=(10, 1),
+                     sg.Button('[OK] Aplicar', key='APPLY', size=(10, 1),
                                button_color=(TEXT, '#186840')),
-                     sg.Button('âœ• Cancelar', key='CANCEL', size=(10, 1),
+                     sg.Button('[X] Cancelar', key='CANCEL', size=(10, 1),
                                button_color=(TEXT, '#4a1010'))],
                 ]
                 ip_win = sg.Window(
@@ -1282,17 +1649,17 @@ class RUT956ConfigGUI:
                 new_ip = values[event]
                 self.window['IP'].update(new_ip)
                 self.window['STATUS'].update(
-                    f'â— Desconectado â€” reconectate con {new_ip}', text_color=AMBER)
+                    f'( ) Desconectado - reconectate con {new_ip}', text_color=AMBER)
 
-            # â”€â”€ Dispositivos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # -- Dispositivos --------------------------------------------------
             elif event == 'BTN_SCAN':
                 if self._scanning:
                     continue
                 self._scanning = True
                 self.devices_data.clear()
                 self.window['DEV_TABLE'].update(values=[])
-                self.window['DEV_STATUS'].update('ðŸ” Escaneando red local... por favor espera')
-                self.window['SEL_IP'].update('â€”')
+                self.window['DEV_STATUS'].update('(SCAN) Escaneando red local... por favor espera')
+                self.window['SEL_IP'].update('-')
                 threading.Thread(
                     target=scan_network_thread,
                     args=(self.window,), daemon=True,
@@ -1310,8 +1677,8 @@ class RUT956ConfigGUI:
             elif event == 'SCAN_DONE':
                 self._scanning = False
                 n = len(self.devices_data)
-                msg = (f'âœ“ Escaneo completado â€” {n} dispositivo(s) encontrado(s)'
-                       if n else 'âš  No se encontraron dispositivos (red vacia o sin ARP)')
+                msg = (f'[OK] Escaneo completado - {n} dispositivo(s) encontrado(s)'
+                       if n else '[!] No se encontraron dispositivos (red vacia o sin ARP)')
                 self.window['DEV_STATUS'].update(msg)
 
             elif event == 'DEV_TABLE':
@@ -1337,12 +1704,12 @@ class RUT956ConfigGUI:
                 self.devices_data.clear()
                 self.window['DEV_TABLE'].update(values=[])
                 self.window['DEV_STATUS'].update('')
-                self.window['SEL_IP'].update('â€”')
+                self.window['SEL_IP'].update('-')
 
         self.window.close()
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# ==============================================================================
 if __name__ == '__main__':
     app = RUT956ConfigGUI()
     app.run()
