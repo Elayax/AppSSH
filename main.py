@@ -152,7 +152,10 @@ class RUT956ConfigGUI:
         # Barra de estado global (footer)
         self._status_msg   = 'Listo'
         self._status_color = DIM
-        # Comunicacion thread-safe para el popup de configuracion SIM
+        # Password guardado en memoria para reconexion automatica
+        self._session_password: str = ''
+        # Lock para reconexion SSH (evita que dos hilos reconecten en paralelo)
+        self._reconnect_lock = threading.Lock()
 
     # -- Config ----------------------------------------------------------------
 
@@ -227,15 +230,24 @@ class RUT956ConfigGUI:
                     "ip addr show mob1s2a1 2>/dev/null"
                     " | grep 'inet ' | awk '{print $2}' | cut -d/ -f1",
                     show_cmd=False) or ''
-                oper  = self.exec_cmd("gsmctl -a 2>/dev/null || echo '-'", show_cmd=False) or '-'
-                ntype = self.exec_cmd("gsmctl -n 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                oper  = self.exec_cmd("gsmctl -o 2>/dev/null || echo '-'", show_cmd=False) or '-'  # -o = operator name
+                ntype = self.exec_cmd("gsmctl -t 2>/dev/null || echo '-'", show_cmd=False) or '-'  # -t = conntype LTE/etc
                 band  = self.exec_cmd("gsmctl -b 2>/dev/null || echo '-'", show_cmd=False) or '-'
                 qual  = self.exec_cmd("gsmctl -q 2>/dev/null || echo '-'", show_cmd=False) or '-'
-                imei  = self.exec_cmd("gsmctl -m 2>/dev/null || echo '-'", show_cmd=False) or '-'
+                imei  = self.exec_cmd("gsmctl -i 2>/dev/null || echo '-'", show_cmd=False) or '-'  # -i = IMEI (no -m)
                 iccid = self.exec_cmd("gsmctl -J 2>/dev/null || echo '-'", show_cmd=False) or '-'
                 rssi_l = next((l for l in qual.splitlines() if 'RSSI' in l), '-')
                 sinr_l = next((l for l in qual.splitlines() if 'SINR' in l), '')
-                c_sim  = GREEN if (sim1_ip.strip() or sim2_ip.strip()) else AMBER
+                # Color: GREEN si hay IP, AMBER si hay senal/banda aunque sin IP, DIM si nada
+                has_ip     = bool(sim1_ip.strip() or sim2_ip.strip())
+                has_signal = ('RSSI' in qual and 'N/A' not in qual)
+                has_band   = (band.strip() not in ('', '-', 'N/A'))
+                if has_ip:
+                    c_sim = GREEN
+                elif has_signal or has_band:
+                    c_sim = AMBER   # registrado en red pero sin IP aun
+                else:
+                    c_sim = DIM     # sin señal
                 data.update({
                     'sim1_ip': sim1_ip.strip(), 'sim2_ip': sim2_ip.strip(),
                     'oper': oper.strip(), 'ntype': ntype.strip(),
@@ -247,25 +259,53 @@ class RUT956ConfigGUI:
                 # 4. SNMP
                 snmp_st = self.exec_cmd("pgrep snmpd 2>/dev/null || echo ''", show_cmd=False) or ''
                 c_snmp = GREEN if snmp_st.strip() else DIM
-                data['snmp'] = 'Activo (PID: ' + snmp_st.strip()[:6] + ')' if snmp_st.strip() else 'Inactivo'
+                data['snmp'] = ('Activo (PID: ' + snmp_st.strip()[:6] + ')') if snmp_st.strip() else 'Inactivo'
                 self.window.write_event_value('__RD__', ('SNMP', c_snmp))
 
-                # 5. ZeroTier
+                # 5. ZeroTier: estado, IP y Network IDs activos
                 zt_st = self.exec_cmd("zerotier-cli status 2>/dev/null || echo ''", show_cmd=False) or ''
                 zt_ip = self.exec_cmd(
                     "ip addr 2>/dev/null | grep -A2 ' zt' | grep 'inet ' "
                     "| awk '{print $2}' | cut -d/ -f1 | head -1",
                     show_cmd=False) or '-'
+                # Obtener redes unidas (ID y estado)
+                zt_nets_raw = self.exec_cmd(
+                    "zerotier-cli listnetworks 2>/dev/null || echo ''",
+                    show_cmd=False) or ''
+                # Parsear lineas de listnetworks: <nwid> <name> <mac> <status> <type> <dev> <ips>
+                zt_nets = []
+                for ln in zt_nets_raw.splitlines():
+                    parts = ln.split()
+                    if len(parts) >= 4 and len(parts[0]) == 16 and parts[0] != '200':
+                        zt_nets.append({'nwid': parts[0], 'status': parts[3] if len(parts) > 3 else '?'})
                 c_zt = GREEN if 'ONLINE' in zt_st.upper() else DIM
-                data.update({'zt_status': zt_st.strip()[:30], 'zt_ip': zt_ip.strip()})
+                data.update({
+                    'zt_status': zt_st.strip()[:30],
+                    'zt_ip': zt_ip.strip(),
+                    'zt_nets': zt_nets,
+                })
                 self.window.write_event_value('__RD__', ('ZT', c_zt))
 
-                # 6. Firewall
-                fw_st = self.exec_cmd(
+                # 6. Firewall: contar redirecciones activas y mostrar detalle
+                fw_rules = self.exec_cmd(
+                    r"uci show firewall 2>/dev/null | grep '\.name=' | awk -F= '{print $2}'",
+                    show_cmd=False) or ''
+                fw_snmp  = self.exec_cmd(
                     "uci show firewall 2>/dev/null | grep UPS_SNMP || echo ''",
                     show_cmd=False) or ''
-                c_fw = GREEN if fw_st.strip() else DIM
-                data['fw'] = 'UPS_SNMP activa' if fw_st.strip() else 'Sin regla UPS_SNMP'
+                fw_masq  = self.exec_cmd(
+                    "uci get firewall.@zone[1].masq 2>/dev/null || echo '0'",
+                    show_cmd=False) or '0'
+                rule_names = [r.strip().strip("'") for r in fw_rules.splitlines() if r.strip()]
+                c_fw = GREEN if fw_snmp.strip() else AMBER
+                fw_detail = ''
+                if fw_snmp.strip():
+                    fw_detail = f'UPS_SNMP OK  masq={fw_masq.strip()}'
+                elif rule_names:
+                    fw_detail = f'{len(rule_names)} reglas (sin UPS_SNMP)'
+                else:
+                    fw_detail = 'Sin reglas de redireccion'
+                data.update({'fw': fw_detail, 'fw_rules': rule_names})
                 self.window.write_event_value('__RD__', ('FW', c_fw))
 
                 # Enviar datos al panel de estado derecho
@@ -352,7 +392,11 @@ class RUT956ConfigGUI:
         rows = [
             [sg.Text('ESTADO DEL ROUTER',
                      font=('Segoe UI', 10, 'bold'), text_color=ACCT2,
-                     pad=(8, (10, 14)))],
+                     pad=(8, (10, 6)))],
+            [sg.Button('=] Copiar Estado', key='BTN_COPY_STATUS',
+                       button_color=(DIM, BG3),
+                       font=('Segoe UI', 8), pad=(8, (0, 10)),
+                       border_width=0, tooltip='Copia todo el estado al portapapeles para diagnóstico')],
 
             *[_sec('-- RED LAN --------------------')],
             *[_row('IP LAN',       'ST_LAN_IP')],
@@ -369,6 +413,19 @@ class RUT956ConfigGUI:
             *[_sec('-- VPN / SNMP -----------------')],
             *[_row('ZeroTier IP',  'ST_ZT_IP')],
             *[_row('ZT Estado',    'ST_ZT')],
+            # Network ID activo: fila especial con boton de edicion
+            [
+                sg.Text('ZT Network ID:', size=(13, 1),
+                        text_color=DIM, font=('Segoe UI', 8)),
+                sg.Text('--', key='ST_ZT_NETID', text_color=ACCT2,
+                        font=('Consolas', 9, 'bold'), size=(18, 1)),
+            ],
+            [
+                sg.Push(),
+                sg.Button('[+] Cambiar Red ZT', key='BTN_ZT_EDIT',
+                          button_color=(DIM, BG3), font=('Segoe UI', 8),
+                          border_width=0, pad=((0, 8), (0, 4))),
+            ],
             *[_row('SNMP',         'ST_SNMP')],
             *[_row('Firewall',     'ST_FW')],
 
@@ -398,12 +455,48 @@ class RUT956ConfigGUI:
             self._log(f'SSH conectado a {ip}', 'OK')
             self.config['router_ip'] = ip
             self.config['username']  = user
+            self._session_password   = password   # guardar para reconexion
             self._save_config()
             self.connected = True
             return True
         except Exception as e:
             self._log(f'Error de conexion: {e}', 'ERROR')
             self.connected = False
+            return False
+
+    def _try_reconnect(self, retries: int = 5, delay: int = 6) -> bool:
+        """Intenta reconectar SSH después de un reinicio de red. Thread-safe."""
+        import time as _t
+        with self._reconnect_lock:
+            # Si ya alguien reconecto mientras esperabamos el lock, listo
+            if self.connected and self.ssh:
+                try:
+                    self.ssh.exec_command('echo ping', timeout=3)
+                    return True
+                except Exception:
+                    pass
+            ip   = self.config.get('router_ip', '')
+            user = self.config.get('username',  '')
+            pwd  = self._session_password
+            if not all([ip, user, pwd]):
+                self._log('Sin credenciales para reconectar', 'ERROR')
+                return False
+            for attempt in range(1, retries + 1):
+                self._log(f'Reconectando SSH ({attempt}/{retries})...', 'WAIT')
+                try:
+                    new_ssh = paramiko.SSHClient()
+                    new_ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                    new_ssh.connect(ip, username=user, password=pwd, timeout=12)
+                    self.ssh = new_ssh
+                    self.connected = True
+                    self._log('SSH reconectado OK', 'OK')
+                    return True
+                except Exception as e:
+                    self._log(f'Intento {attempt} fallido: {e}', 'ERROR')
+                    if attempt < retries:
+                        _t.sleep(delay)
+            self.connected = False
+            self._log('No se pudo reconectar SSH', 'ERROR')
             return False
 
     def exec_cmd(self, cmd: str, show_cmd: bool = True) -> str:
@@ -419,6 +512,20 @@ class RUT956ConfigGUI:
                 self._log(f'-> {result}', 'INFO')
             return result
         except Exception as e:
+            err_str = str(e).lower()
+            # Si la sesion murio (network restart la mato), intentar reconectar
+            if 'session not active' in err_str or 'not connected' in err_str or 'socket' in err_str:
+                if self._session_password and self._try_reconnect():
+                    # Reintentar el comando una vez con la nueva sesion
+                    try:
+                        _, stdout, _ = self.ssh.exec_command(cmd)
+                        result = stdout.read().decode().strip()
+                        if result and len(result) < 150:
+                            self._log(f'-> {result}', 'INFO')
+                        return result
+                    except Exception as e2:
+                        self._log(f'Error tras reconexion: {e2}', 'ERROR')
+                        return ''
             self._log(f'Error ejecutando comando: {e}', 'ERROR')
             return ''
 
@@ -657,10 +764,14 @@ class RUT956ConfigGUI:
                           background_color=CLBG, text_color='#7ab8f0',
                           expand_x=True, pad=(8, 2))],
             [sg.Push(),
+             sg.Button('=] Copiar Diagnostico', key='COPY_DIAG', size=(20, 1),
+                       button_color=(TEXT, '#2a4a6a'),
+                       font=('Segoe UI', 9, 'bold'),
+                       disabled=True, pad=(4, 6)),
              sg.Button('V Cerrar', key='CLOSE', size=(14, 1),
                        button_color=(TEXT, '#186840'),
                        font=('Segoe UI', 10, 'bold'),
-                       disabled=True, pad=(8, 6))],
+                       disabled=True, pad=(4, 6))],
         ]
 
         prog_win = sg.Window(
@@ -673,9 +784,12 @@ class RUT956ConfigGUI:
         prog_log_lines: list = []
         done_count = [0]
         spin_tick = [0]   # contador de animacion compartido
+        # Resultados finales por SIM (para el diagnostico copiable)
+        sim_results: dict = {'S1': {}, 'S2': {}}
 
         # -- Workers de configuracion -----------------------------------------
         restart_event = _threading.Event()
+        uci_lock      = _threading.Lock()   # evita condicion de carrera en UCI
 
         def sim_worker(cfg: dict, is_primary: bool) -> None:
             sim_n  = cfg['sim']
@@ -714,8 +828,12 @@ class RUT956ConfigGUI:
                     return False
                 return True
 
-            # -- PASO 0: Diagnostico inicial ----------------------------------
+            # -- PASO 0: Diagnostico inicial (por slot) -----------------------
             upd('diag', 'run', 'Verificando modem y SIM...')
+            # gsmctl -z = simstate (NO tiene opcion -s para slot, -s es para SMS)
+            # gsmctl -T = current sim slot
+            # gsmctl -i = IMEI (NO -m, que da el modelo del equipo)
+            # gsmctl -J = ICCID
             sim_st = self.exec_cmd(
                 'gsmctl -z 2>/dev/null || echo "N/A"',
                 show_cmd=False) or 'N/A'
@@ -723,17 +841,23 @@ class RUT956ConfigGUI:
                 'gsmctl -J 2>/dev/null || echo "N/A"',
                 show_cmd=False) or 'N/A'
             imei   = self.exec_cmd(
-                'gsmctl -m 2>/dev/null || echo "N/A"',
+                'gsmctl -i 2>/dev/null || echo "N/A"',  # -i = IMEI (no -m)
                 show_cmd=False) or 'N/A'
 
             upd('diag', 'run', f'Estado SIM: {sim_st.strip()}',
                 f'ICCID:{iccid.strip()}  IMEI:{imei.strip()}')
+
+            sim_results[prefix].update({
+                'slot': slot, 'apn': apn, 'auth': auth, 'pdp': pdp,
+                'iccid': iccid.strip(), 'imei': imei.strip(),
+            })
 
             if 'not inserted' in sim_st.lower():
                 upd('diag', 'err', f'SIM {sim_n}: no detectada fisicamente',
                     f'Estado:{sim_st.strip()}')
                 for sid, _ in STEPS[1:]:
                     upd(sid, 'skip', 'N/A - SIM no presente')
+                sim_results[prefix]['resultado'] = f'X SIM {sim_n}: no insertada'
                 finish('err',
                        f'X  SIM {sim_n}: no insertada\n'
                        'Verifica el contacto fisico de la SIM en el router.')
@@ -757,6 +881,10 @@ class RUT956ConfigGUI:
             # -- PASO UCI: Configuracion segun firmware RUT9M_R_00.07.19 -----
             upd('uci', 'run',
                 f'Escribiendo UCI completo para {slot}...')
+            # Metrica: SIM1=10 (primaria), SIM2=20 (secundaria/failover)
+            metric = '10' if is_primary else '20'
+            # NOTA: delegate='0' y method='nat' SI son validos en proto=wwan
+            # del firmware RUT9M_R_00.07.19 - confirmado con config real
             cmd_uci = (
                 f"uci set network.{slot}.proto='wwan'\n"
                 f"uci set network.{slot}.sim='{sim_n}'\n"
@@ -767,21 +895,24 @@ class RUT956ConfigGUI:
                 f"uci set network.{slot}.auto_apn='1'\n"
                 f"uci set network.{slot}.pdp='1'\n"
                 f"uci set network.{slot}.dhcpv6='0'\n"
-                f"uci set network.{slot}.area_type='wan'\n"
-                f"uci set network.{slot}.metric='1'\n"
-                f"uci set network.{slot}.mtu='1280'\n"
                 f"uci set network.{slot}.delegate='0'\n"
                 f"uci set network.{slot}.method='nat'\n"
+                f"uci set network.{slot}.area_type='wan'\n"
+                f"uci set network.{slot}.metric='{metric}'\n"
+                f"uci set network.{slot}.mtu='1430'\n"
+                f"uci set network.{slot}.enabled='1'\n"
+                f"uci set network.{slot}.auto='1'\n"
             )
             if user:  cmd_uci += f"uci set network.{slot}.username='{user}'\n"
             if passw: cmd_uci += f"uci set network.{slot}.password='{passw}'\n"
             cmd_uci += 'uci commit network'
-            out = self.exec_cmd(cmd_uci, show_cmd=False) or ''
+            with uci_lock:
+                out = self.exec_cmd(cmd_uci, show_cmd=False) or ''
             if 'error' in out.lower():
                 upd('uci', 'warn', 'UCI aplicado con advertencias', out[:80])
             else:
                 upd('uci', 'ok',
-                    f'UCI OK  .  {slot}  APN={apn}  auto_apn=1')
+                    f'UCI OK  .  {slot}  APN={apn}  metric={metric}  enabled=1')
 
             # -- PASO Firewall ------------------------------------------------
             upd('fw', 'run', 'Verificando zona WAN...')
@@ -799,20 +930,46 @@ class RUT956ConfigGUI:
 
             # -- PASO Restart: solo SIM1 reinicia la red ---------------------
             if is_primary:
-                upd('restart', 'run', 'Reiniciando servicio de red...')
-                self.exec_cmd('/etc/init.d/network restart', show_cmd=False)
-                upd('restart', 'ok', 'Red reiniciada  .  esperando 5 s...')
-                _time.sleep(5)
+                upd('restart', 'run', 'Reiniciando red (puede cortar SSH)...')
+                # El network restart cierra la sesion SSH; lanzarlo en bg
+                # y luego reconectar activamente
+                try:
+                    self.ssh.exec_command('/etc/init.d/network restart &')
+                except Exception:
+                    pass
+                self.connected = False
+                upd('restart', 'run', 'Red reiniciada - reconectando SSH...')
+                _time.sleep(8)   # esperar a que el router levante la red
+                reconectado = self._try_reconnect(retries=6, delay=5)
+                if reconectado:
+                    upd('restart', 'ok', 'Red reiniciada + SSH reconectado OK')
+                else:
+                    upd('restart', 'warn', 'Red reiniciada - SSH sin respuesta aun')
+                _time.sleep(2)
                 restart_event.set()
             else:
                 upd('restart', 'run', 'Esperando reinicio de red (SIM1)...')
-                restart_event.wait(timeout=90)
-                upd('restart', 'ok', 'Red reiniciada (por SIM1)')
+                restart_event.wait(timeout=120)
+                # Asegurarse de que la sesion SSH este viva para SIM2 tambien
+                if not self.connected:
+                    self._try_reconnect(retries=3, delay=5)
+                upd('restart', 'ok', 'Red reiniciada (coordinado con SIM1)')
 
             # -- PASO ifup ---------------------------------------------------
-            upd('ifup', 'run', f'Forzando ifup {slot}...')
-            self.exec_cmd(f'ifup {slot} 2>/dev/null || true', show_cmd=False)
-            upd('ifup', 'ok', f'ifup {slot} ejecutado')
+            upd('ifup', 'run', f'Reiniciando interfaz {slot}...')
+            # ifdown primero para limpiar estado previo, luego ifup
+            self.exec_cmd(
+                f'ifdown {slot} 2>/dev/null || true; sleep 2; '
+                f'ifup {slot} 2>/dev/null || true',
+                show_cmd=False)
+            # Esperar 10s para que netifd negocie IP con el APN
+            upd('ifup', 'run', f'Esperando negociacion IP con APN (10s)...')
+            _time.sleep(10)
+            ip_check = _get_ip(slot)
+            if ip_check:
+                upd('ifup', 'ok', f'IP asignada: {ip_check}')
+            else:
+                upd('ifup', 'ok', f'ifup ejecutado - esperando IP del APN...')
 
             # -- Rondas de espera con countdown ------------------------------
             ROUND_SECS = 15
@@ -828,14 +985,16 @@ class RUT956ConfigGUI:
                     _time.sleep(1)
 
                 # Leer estado del modem
+                # gsmctl -z = simstate | -o = operator (NO -a, eso es serial)
+                # gsmctl -i = IMEI | -q = signal | -b = band
                 s_sim  = self.exec_cmd(
                     'gsmctl -z 2>/dev/null || echo "N/A"',
                     show_cmd=False) or 'N/A'
                 s_oper = self.exec_cmd(
-                    'gsmctl -a 2>/dev/null || echo "N/A"',
+                    'gsmctl -o 2>/dev/null || echo "N/A"',  # -o = operator name
                     show_cmd=False) or 'N/A'
                 s_net  = self.exec_cmd(
-                    'gsmctl -n 2>/dev/null || echo "N/A"',
+                    'gsmctl -t 2>/dev/null || echo "N/A"',  # -t = conntype (LTE/etc)
                     show_cmd=False) or 'N/A'
                 # gsmctl -q RSSI/RSRP/SINR/RSRQ (mejor que -s)
                 s_qual = self.exec_cmd(
@@ -911,30 +1070,40 @@ class RUT956ConfigGUI:
             )
 
             if connected:
-                upd('final', 'ok',
-                    'V Conectado a red celular', detail)
-                finish('ok',
-                       f'V  SIM {sim_n} CONECTADA\n'
-                       f'Operador: {s.get("oper","?")}  '
-                       f'Red: {s.get("ntype","?")}  Banda: {band}\n'
-                       f'Senal: {sig_bar}\n'
-                       f'{sig_summary}\n'
-                       f'IP: {s.get("ip") or "esperando..."}')
+                resultado = (
+                    f'V  SIM {sim_n} CONECTADA\n'
+                    f'Operador: {s.get("oper","?")}  '
+                    f'Red: {s.get("ntype","?")}  Banda: {band}\n'
+                    f'Senal: {sig_bar}\n'
+                    f'{sig_summary}\n'
+                    f'IP: {s.get("ip") or "esperando..."}'
+                )
+                sim_results[prefix].update({'resultado': resultado, 'estado': 'ok',
+                                            'oper': s.get('oper','?'), 'ip': s.get('ip',''),
+                                            'banda': band, 'senal': sig_bar})
+                upd('final', 'ok', 'V Conectado a red celular', detail)
+                finish('ok', resultado)
             elif ok_sim:
-                upd('final', 'warn',
-                    'SIM presente - sin datos aun', detail)
-                finish('warn',
-                       f'!  SIM {sim_n}: insertada, sin conexion\n'
-                       f'APN: {apn}  Banda: {band}\n'
-                       f'Senal: {sig_bar}\n'
-                       'Verifica APN en WebUI y plan de datos')
+                resultado = (
+                    f'!  SIM {sim_n}: insertada, sin conexion\n'
+                    f'APN: {apn}  Banda: {band}\n'
+                    f'Senal: {sig_bar}\n'
+                    'Verifica APN en WebUI y plan de datos'
+                )
+                sim_results[prefix].update({'resultado': resultado, 'estado': 'warn',
+                                            'ip': '', 'banda': band, 'senal': sig_bar})
+                upd('final', 'warn', 'SIM presente - sin datos aun', detail)
+                finish('warn', resultado)
             else:
-                upd('final', 'err',
-                    'Sin respuesta del modem', detail)
-                finish('err',
-                       f'X  SIM {sim_n}: sin respuesta\n'
-                       f'Estado: {s.get("sim","?")}  '
-                       'Verifica fisicamente la SIM y antena')
+                resultado = (
+                    f'X  SIM {sim_n}: sin respuesta\n'
+                    f'Estado: {s.get("sim","?")}  '
+                    'Verifica fisicamente la SIM y antena'
+                )
+                sim_results[prefix].update({'resultado': resultado, 'estado': 'err',
+                                            'ip': '', 'banda': band, 'senal': ''})
+                upd('final', 'err', 'Sin respuesta del modem', detail)
+                finish('err', resultado)
 
         # -- Lanzar ambos threads --------------------------------------------
         _threading.Thread(
@@ -986,9 +1155,60 @@ class RUT956ConfigGUI:
                     prog_win['PROG_SUB'].update(
                         'V  Configuracion completada para ambas SIMs')
                     prog_win['CLOSE'].update(disabled=False)
+                    prog_win['COPY_DIAG'].update(disabled=False)
                     self._set_status(
                         'SIM 4G - Configuracion dual completa. '
                         'Revisa resultados en la ventana.', GREEN)
+
+            elif ev2 == 'COPY_DIAG':
+                # Generar texto de diagnostico copiable para IA
+                ts_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                lines = [
+                    '=' * 60,
+                    f'DIAGNOSTICO SIM 4G  --  {ts_now}',
+                    '=' * 60,
+                ]
+                for pref, label in [('S1', 'SIM 1'), ('S2', 'SIM 2')]:
+                    r = sim_results.get(pref, {})
+                    lines += [
+                        '',
+                        f'--- {label} ({r.get("slot","?")}) ---',
+                        f'  APN    : {r.get("apn","?")}',
+                        f'  Auth   : {r.get("auth","?")}',
+                        f'  PDP    : {r.get("pdp","?")}',
+                        f'  IMEI   : {r.get("imei","?")}',
+                        f'  ICCID  : {r.get("iccid","?")}',
+                        f'  Oper   : {r.get("oper","?")}',
+                        f'  Banda  : {r.get("banda","?")}',
+                        f'  Senal  : {r.get("senal","?")}',
+                        f'  IP     : {r.get("ip") or "sin IP"}',
+                        f'  Estado : {r.get("estado","?")}',
+                        f'  Resultado:',
+                    ]
+                    for rl in r.get('resultado', '(sin resultado)').splitlines():
+                        lines.append(f'    {rl}')
+                lines += [
+                    '',
+                    '--- LOG DETALLADO ---',
+                ]
+                lines += prog_log_lines
+                lines += [
+                    '',
+                    '--- LOG PRINCIPAL (ultimas 60 lineas) ---',
+                ]
+                lines += self.log_lines[-60:]
+                diag_text = '\n'.join(lines)
+                try:
+                    sg.clipboard_set(diag_text)
+                    prog_win['PROG_SUB'].update(
+                        'V  Diagnostico copiado al portapapeles - pega en tu IA')
+                except Exception as _ce:
+                    # fallback: mostrar en popup scrollable
+                    sg.popup_scrolled(
+                        diag_text, title='Diagnostico SIM',
+                        size=(80, 30), background_color=BG1, text_color=TEXT,
+                        font=('Consolas', 8),
+                    )
 
         prog_win.close()
 
@@ -1081,6 +1301,7 @@ class RUT956ConfigGUI:
             self._log('No conectado al router', 'ERROR'); return
         if not network_id or len(network_id) != 16:
             self._log('Network ID invalido (debe tener 16 caracteres)', 'ERROR'); return
+
         self._log('=== CONFIGURANDO ZEROTIER ===')
         self._set_progress(80, 'ZeroTier: Instalando')
         cmd = (
@@ -1090,11 +1311,129 @@ class RUT956ConfigGUI:
             f"zerotier-cli join {network_id}"
         )
         self.exec_cmd(cmd)
-        self._log('Esperando autorizacion ZeroTier (5 s)...', 'WAIT')
-        self.exec_cmd('sleep 5')
+        self._log('Esperando autorizacion ZeroTier (12 s)...', 'WAIT')
+        self.exec_cmd('sleep 12')
+
+        # -- Ajustar MTU de la interfaz ZeroTier (evita fragmentacion en 4G) --
+        # La interfaz ZT se llama zt<nwid_corto>; MTU optimo con 4G/LTE = 1400
+        self._log('Ajustando MTU ZeroTier para evitar fragmentacion en 4G...', 'INFO')
+        mtu_cmd = (
+            # Obtener nombre de la interfaz ZT y bajar su MTU a 1400
+            "ZT_IF=$(ip link 2>/dev/null | grep -o 'zt[a-z0-9]*' | head -1); "
+            "if [ -n \"$ZT_IF\" ]; then "
+            "  ip link set \"$ZT_IF\" mtu 1400 2>/dev/null && echo \"MTU $ZT_IF=1400 OK\"; "
+            "fi"
+        )
+        mtu_out = self.exec_cmd(mtu_cmd, show_cmd=False) or ''
+        if 'MTU' in mtu_out and 'OK' in mtu_out:
+            self._log(f'MTU ZT: {mtu_out.strip()}', 'OK')
+        else:
+            self._log('MTU ZT: interfaz aun no levantada (se aplicara al conectar)', 'WAIT')
+
         self._log(f'ZeroTier configurado (Network: {network_id[:8]}...)', 'OK')
+        self._set_progress(83, 'ZeroTier: Diagnosticando peers...')
+
+        # -- Diagnostico de peers (RELAY vs DIRECT) ---------------------------
+        self.zerotier_diagnostics(silent=False)
         self._set_progress(85, 'ZeroTier: Completado [OK]')
         self._update_roadmap()
+
+    def zerotier_diagnostics(self, silent: bool = False) -> dict:
+        """
+        Diagnostica el estado de conexion ZeroTier en el router:
+        - Modo de cada peer: DIRECT / via RELAY
+        - Latencia
+        - Redes unidas y su estado
+        Devuelve un dict con los resultados y los loguea.
+        """
+        if not self.connected:
+            self._log('ZT Diagnostico: sin conexion SSH', 'ERROR')
+            return {}
+
+        # Estado general
+        zt_ver = self.exec_cmd(
+            'zerotier-cli status 2>/dev/null || echo "N/A"', show_cmd=False) or 'N/A'
+        # Peers: ID, latencia, via (DIRECT o via relay)
+        peers_raw = self.exec_cmd(
+            'zerotier-cli peers 2>/dev/planet || zerotier-cli peers 2>/dev/null || echo ""',
+            show_cmd=False) or ''
+        # Redes
+        nets_raw = self.exec_cmd(
+            'zerotier-cli listnetworks 2>/dev/null || echo ""',
+            show_cmd=False) or ''
+        # IP ZT
+        zt_ip = self.exec_cmd(
+            "ip addr 2>/dev/null | grep -A2 ' zt' | grep 'inet ' "
+            "| awk '{print $2}' | cut -d/ -f1 | head -1",
+            show_cmd=False) or ''
+        # MTU actual
+        zt_mtu = self.exec_cmd(
+            "ip link 2>/dev/null | grep -A1 'zt' | grep 'mtu' "
+            "| awk '{print $5}' | head -1",
+            show_cmd=False) or '?'
+
+        result = {
+            'status': zt_ver.strip(),
+            'zt_ip': zt_ip.strip(),
+            'mtu': zt_mtu.strip(),
+            'peers': [],
+            'networks': [],
+            'relay_count': 0,
+            'direct_count': 0,
+        }
+
+        relay_peers  = []
+        direct_peers = []
+        for ln in peers_raw.splitlines():
+            parts = ln.split()
+            # Formato: <id> <ver> <role> <lat_ms> <link_type> ...
+            if len(parts) >= 5 and parts[0] not in ('200', '<ztaddr>'):
+                peer_id  = parts[0]
+                lat      = parts[3] if len(parts) > 3 else '?'
+                link     = parts[4] if len(parts) > 4 else '?'
+                is_relay = ('relay' in link.lower() or link == '-1' or lat == '-1')
+                entry = {'id': peer_id, 'lat': lat, 'link': link, 'relay': is_relay}
+                result['peers'].append(entry)
+                if is_relay:
+                    relay_peers.append(entry)
+                    result['relay_count'] += 1
+                else:
+                    direct_peers.append(entry)
+                    result['direct_count'] += 1
+
+        for ln in nets_raw.splitlines():
+            parts = ln.split()
+            if len(parts) >= 4 and len(parts[0]) == 16 and parts[0] != '200':
+                result['networks'].append({
+                    'nwid': parts[0],
+                    'name': parts[1] if len(parts) > 1 else '?',
+                    'status': parts[3] if len(parts) > 3 else '?',
+                })
+
+        if not silent:
+            self._log(f'ZeroTier: {zt_ver.strip()}', 'INFO')
+            self._log(f'  ZT IP: {zt_ip or "sin IP aun"}  MTU: {zt_mtu}', 'INFO')
+            for net in result['networks']:
+                self._log(
+                    f'  Red: {net["nwid"]}  estado={net["status"]}', 'INFO')
+            if relay_peers:
+                self._log(
+                    f'  [!] RELAY activo ({len(relay_peers)} peers via relay): '
+                    + ', '.join(p["id"][:10] + '..' for p in relay_peers[:3]),
+                    'ERROR')
+                self._log(
+                    '  Causa probable: NAT/firewall bloqueando UDP 9993. '
+                    'ZeroTier usa servidores de relay lentos como fallback.', 'ERROR')
+                self._log(
+                    '  Solucion: abre puerto UDP 9993 en tu firewall local '
+                    'y en el router upstream del RUT956.', 'WAIT')
+            elif direct_peers:
+                self._log(
+                    f'  [OK] Conexion DIRECTA ({len(direct_peers)} peers)', 'OK')
+            else:
+                self._log('  Sin peers visible aun (puede estar autorizando)', 'WAIT')
+
+        return result
 
     def configure_firewall(self):
         if not self.connected:
@@ -1347,12 +1686,30 @@ class RUT956ConfigGUI:
                      font=('Segoe UI', 11, 'bold'), text_color=ACCT2,
                      pad=(0, (10, 4))),
              sg.Push(),
+             sg.Button('[M] Detectar Modem', key='BTN_DETECT_MODEM',
+                       button_color=(TEXT, '#16408a'),
+                       font=('Segoe UI', 9, 'bold'), pad=(4, 4),
+                       tooltip='Detecta la IP del gateway/modem de tu conexion actual'),
              sg.Button('Escanear Red',    key='BTN_SCAN',
                        button_color=(TEXT, ACCENT), **btn_cfg),
              sg.Button('Abrir en Browser', key='BTN_BROWSER',
                        button_color=(TEXT, '#186840'), **btn_cfg),
              sg.Button('Limpiar', key='BTN_CLR_DEV',
                        button_color=(TEXT, '#4a1010'), **btn_cfg)],
+
+            # Banner de resultado de deteccion de modem
+            [sg.Text('Gateway/Modem detectado:',
+                     text_color=DIM, font=('Segoe UI', 9),
+                     pad=(2, (0, 2))),
+             sg.Text('--', key='MODEM_IP',
+                     text_color=GREEN, font=('Consolas', 11, 'bold'),
+                     size=(20, 1), pad=(4, (0, 2))),
+             sg.Text('', key='MODEM_HOST',
+                     text_color=ACCT2, font=('Segoe UI', 9),
+                     size=(30, 1), pad=(0, (0, 2))),
+             sg.Text('', key='MODEM_PING',
+                     text_color=DIM, font=('Segoe UI', 8),
+                     size=(12, 1))],
 
             [sg.Text(
                 'Lee la tabla ARP y hace ping a cada dispositivo. '
@@ -1589,10 +1946,62 @@ class RUT956ConfigGUI:
                         self.window[k].update(v or '--')
                     except Exception:
                         pass
+                # Actualizar ZeroTier Network IDs
+                zt_nets = d.get('zt_nets', [])
+                if zt_nets:
+                    net_str = '  '.join(
+                        f"{n['nwid'][:8]}.. ({n['status']})"
+                        for n in zt_nets[:2])
+                    try:
+                        self.window['ST_ZT_NETID'].update(net_str)
+                    except Exception:
+                        pass
+                else:
+                    try:
+                        self.window['ST_ZT_NETID'].update('(ninguna)')
+                    except Exception:
+                        pass
 
             # -- Refrescar estado (boton o evento) -----------------------------
             elif event in ('BTN_REFRESH_STATUS',):
                 self._update_roadmap()
+
+            elif event == 'BTN_ZT_EDIT':
+                # Popup con opciones ZeroTier
+                choice = sg.popup_menu(
+                    ['[+] Unirse a nueva red',
+                     '[D] Diagnostico (relay vs direct)',
+                     '[R] Refrescar estado'],
+                    title='ZeroTier',
+                    location=(None, None),
+                )
+                if choice == '[+] Unirse a nueva red':
+                    nid_new = sg.popup_get_text(
+                        'Ingresa el Network ID de ZeroTier\n'
+                        '(16 caracteres hex) para unirte a esa red:',
+                        title='ZeroTier  --  Unirse a Red',
+                        background_color=BG2, text_color=TEXT,
+                        default_text='',
+                    )
+                    if nid_new:
+                        nid_new = nid_new.strip()
+                        if len(nid_new) == 16:
+                            threading.Thread(
+                                target=self.configure_zerotier,
+                                args=(nid_new,), daemon=True,
+                            ).start()
+                        else:
+                            self._log('Network ID invalido (debe tener 16 caracteres)', 'ERROR')
+                elif choice == '[D] Diagnostico (relay vs direct)':
+                    if self.connected:
+                        threading.Thread(
+                            target=self.zerotier_diagnostics,
+                            kwargs={'silent': False}, daemon=True,
+                        ).start()
+                    else:
+                        self._log('Conectate al router primero para diagnosticar ZT', 'ERROR')
+                elif choice == '[R] Refrescar estado':
+                    self._update_roadmap()
 
             elif event == 'BTN_CHANGE_IP':
                 # Popup de cambio de IP con tres campos
@@ -1651,8 +2060,139 @@ class RUT956ConfigGUI:
                 self.window['STATUS'].update(
                     f'( ) Desconectado - reconectate con {new_ip}', text_color=AMBER)
 
+            elif event == 'BTN_COPY_STATUS':
+                # Copiar estado completo del router + log para diagnostico con IA
+                ts_now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                # Leer los valores actuales del panel de estado
+                def _vget(k):
+                    try: return self.window[k].get()
+                    except Exception: return '--'
+                diag_parts = [
+                    '=' * 60,
+                    f'ESTADO ACTUAL DEL ROUTER  --  {ts_now}',
+                    f'Router IP : {self.config.get("router_ip", "?")}',
+                    f'Conectado : {"SI" if self.connected else "NO"}',
+                    '=' * 60,
+                    '',
+                    '--- RED LAN ---',
+                    f'  IP LAN      : {_vget("ST_LAN_IP")}',
+                    '',
+                    '--- SIM / 4G ---',
+                    f'  SIM 1 IP    : {_vget("ST_SIM1_IP")}',
+                    f'  SIM 2 IP    : {_vget("ST_SIM2_IP")}',
+                    f'  Operador    : {_vget("ST_OPER")}',
+                    f'  Tipo Red    : {_vget("ST_NTYPE")}',
+                    f'  Banda LTE   : {_vget("ST_BAND")}',
+                    f'  RSSI        : {_vget("ST_RSSI")}',
+                    f'  SINR        : {_vget("ST_SINR")}',
+                    '',
+                    '--- VPN / SNMP ---',
+                    f'  ZeroTier IP : {_vget("ST_ZT_IP")}',
+                    f'  ZT Estado   : {_vget("ST_ZT")}',
+                    f'  SNMP        : {_vget("ST_SNMP")}',
+                    f'  Firewall    : {_vget("ST_FW")}',
+                    '',
+                    '--- MODEM ---',
+                    f'  IMEI        : {_vget("ST_IMEI")}',
+                    f'  ICCID       : {_vget("ST_ICCID")}',
+                    '',
+                    '--- LOG COMPLETO (ultimas 80 lineas) ---',
+                ]
+                diag_parts += self.log_lines[-80:]
+                diag_text = '\n'.join(diag_parts)
+                try:
+                    sg.clipboard_set(diag_text)
+                    self._set_status(
+                        'Estado copiado al portapapeles - pega en tu IA para diagnostico', ACCT2)
+                except Exception:
+                    sg.popup_scrolled(
+                        diag_text, title='Estado Actual del Router',
+                        size=(80, 35), background_color=BG1, text_color=TEXT,
+                        font=('Consolas', 8),
+                    )
+
+            # -- Detectar Modem (Gateway por defecto) --------------------------
+            elif event == 'BTN_DETECT_MODEM':
+                def _find_modem():
+                    try:
+                        r = subprocess.run(
+                            ['ipconfig'],
+                            capture_output=True, text=True,
+                            encoding='utf-8', errors='replace',
+                            creationflags=NO_WIN,
+                        )
+                        gw = ''
+                        for line in r.stdout.splitlines():
+                            lo = line.lower()
+                            if 'puerta de enlace' in lo or 'default gateway' in lo:
+                                parts = line.split(':')
+                                if len(parts) >= 2:
+                                    candidate = parts[-1].strip()
+                                    if re.match(r'^\d{1,3}(\.\d{1,3}){3}$', candidate):
+                                        gw = candidate
+                                        break
+                        # Fallback: route print
+                        if not gw:
+                            r2 = subprocess.run(
+                                ['route', 'print', '0.0.0.0'],
+                                capture_output=True, text=True,
+                                encoding='utf-8', errors='replace',
+                                creationflags=NO_WIN,
+                            )
+                            for line in r2.stdout.splitlines():
+                                pts = line.split()
+                                if len(pts) >= 3 and pts[0] == '0.0.0.0':
+                                    c2 = pts[2]
+                                    if re.match(r'^\d{1,3}(\.\d{1,3}){3}$', c2):
+                                        gw = c2
+                                        break
+                        if not gw:
+                            self.window.write_event_value('MODEM_FOUND', {
+                                'ip': '', 'host': 'Gateway no encontrado', 'alive': False})
+                            return
+                        alive = ping_host(gw, timeout_ms=1200)
+                        host  = resolve_hostname(gw) if alive else '--'
+                        self.window.write_event_value('MODEM_FOUND', {
+                            'ip': gw, 'host': host, 'alive': alive})
+                    except Exception as exc:
+                        self.window.write_event_value('MODEM_FOUND', {
+                            'ip': '', 'host': str(exc), 'alive': False})
+
+                self.window['MODEM_IP'].update('Buscando...', text_color=AMBER)
+                self.window['MODEM_HOST'].update('')
+                self.window['MODEM_PING'].update('')
+                threading.Thread(target=_find_modem, daemon=True).start()
+
+            elif event == 'MODEM_FOUND':
+                d  = values[event]
+                gw = d.get('ip', '')
+                if gw:
+                    alive = d.get('alive', False)
+                    host  = d.get('host', '--')
+                    self.window['MODEM_IP'].update(
+                        gw, text_color=GREEN if alive else AMBER)
+                    self.window['MODEM_HOST'].update(
+                        f'({host})' if host and host != '--' else '')
+                    self.window['MODEM_PING'].update(
+                        '[OK] Responde' if alive else '[!] Sin respuesta',
+                        text_color=GREEN if alive else AMBER)
+                    # Auto-seleccionar en tabla si ya esta escaneada
+                    for i, row in enumerate(self.devices_data):
+                        if row[0] == gw:
+                            self.window['DEV_TABLE'].update(select_rows=[i])
+                            self.window['SEL_IP'].update(gw)
+                            break
+                    # Si no hay SSH activo, sugerir IP en el campo de conexion
+                    if not self.connected:
+                        self.window['IP'].update(gw)
+                    self._log(f'Modem/Gateway detectado: {gw}  ({host})', 'OK')
+                else:
+                    self.window['MODEM_IP'].update('No detectado', text_color=RED)
+                    self.window['MODEM_HOST'].update(d.get('host', ''))
+
             # -- Dispositivos --------------------------------------------------
             elif event == 'BTN_SCAN':
+
                 if self._scanning:
                     continue
                 self._scanning = True
